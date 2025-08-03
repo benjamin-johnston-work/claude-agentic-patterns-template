@@ -1,0 +1,108 @@
+name: Sync Template Repository
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: 
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/sync-template.yml'
+  workflow_dispatch:
+
+jobs:
+  sync-template:
+    runs-on: ubuntu-latest
+    if: github.repository == 'benjamin-johnston-work/agenticpatterns'
+    
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.TEMPLATE_SYNC_TOKEN || github.token }}
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "Template Sync Bot"
+          git config --global user.email "noreply@github.com"
+
+      - name: Clone template repository
+        run: |
+          git clone https://${{ secrets.TEMPLATE_SYNC_TOKEN }}@github.com/benjamin-johnston-work/claude-agentic-patterns-template.git template-repo
+          cd template-repo
+          git checkout main || git checkout -b main
+
+      - name: Sync files (excluding docs)
+        run: |
+          # Remove all files from template except .git
+          find template-repo -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          
+          # Copy everything except docs and template-specific files
+          rsync -av \
+            --exclude='.git/' \
+            --exclude='docs/' \
+            --exclude='README.md' \
+            --exclude='.github/workflows/sync-template.yml' \
+            ./ template-repo/
+
+      - name: Create template README
+        run: |
+          cat > template-repo/README.md << 'EOF'
+          # Claude Agentic Patterns Template
+
+          This is a template repository containing Claude Code agent configurations and patterns.
+
+          ## Quick Start
+
+          1. Click "Use this template" to create your repository
+          2. Customize the agents in `.claude/agents/` for your project
+          3. Modify commands in `.claude/commands/` as needed
+          4. Start using Claude Code with your custom agent setup
+
+          ## What's Included
+
+          - **Agents**: Pre-configured specialized agents for different tasks
+          - **Commands**: Slash commands for common development workflows  
+          - **Patterns**: Implementation patterns following Claude Code best practices
+
+          ## Documentation
+
+          For full documentation and implementation details, see the main repository:
+          https://github.com/benjamin-johnston-work/agenticpatterns
+
+          ## Usage
+
+          This template provides a production-ready Claude Code setup. Customize the agents and commands to match your project's specific needs.
+
+          ---
+
+          *Template automatically synced from main repository*
+          EOF
+
+      - name: Commit and push changes
+        run: |
+          cd template-repo
+          git add .
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+          
+          git commit -m "Sync from main repository - $(date '+%Y-%m-%d %H:%M:%S')"
+          git push origin main
+
+      - name: Create release if major changes
+        run: |
+          cd template-repo
+          
+          # Count changed files (excluding README)
+          CHANGED_FILES=$(git diff HEAD~1 --name-only | grep -v README.md | wc -l)
+          
+          if [ "$CHANGED_FILES" -gt 5 ]; then
+            # Create a new release for major updates
+            TAG="v$(date '+%Y%m%d-%H%M%S')"
+            git tag -a "$TAG" -m "Template sync - major update with $CHANGED_FILES changes"
+            git push origin "$TAG"
+          fi

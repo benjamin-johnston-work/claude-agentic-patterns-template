@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:superprompt.com)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:topmostads.com)",
+      "Bash(gh run view:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh run list:*)"
+    ],
+    "deny": []
+  },
+  "mcps": {
+    "context7s": {
+      "command": "context7s",
+      "args": [
+        "--api-key",
+        "${CONTEXT7S_API_KEY}"
+      ],
+      "env": {
+        "CONTEXT7S_API_KEY": "${CONTEXT7S_API_KEY}"
+      }
+    }
+  },
+  "agent_execution_monitoring": {
+    "enabled": true,
+    "validation_gates": true,
+    "tool_usage_tracking": true,
+    "quality_thresholds": {
+      "confidence_gate": 95,
+      "documentation_required": true,
+      "validator_approval_required": true
+    }
+  }
+}
