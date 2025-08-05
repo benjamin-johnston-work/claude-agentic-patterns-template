@@ -22,7 +22,9 @@
       "Bash(sed:*)",
       "WebFetch(domain:martinfowler.com)",
       "WebFetch(domain:docs.microsoft.com)",
-      "WebFetch(domain:learn.microsoft.com)"
+      "WebFetch(domain:learn.microsoft.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
   }
