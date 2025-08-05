@@ -3,41 +3,39 @@ description: Intelligent bug fix implementation with adaptive validation and man
 argument-hint: [bug reference or investigation context]
 ---
 
-# Intelligent Bug Fix Implementation
+# Sequential Bug Fix Implementation
 
-Execute intelligent bug fix implementation using the specialized @bug-fixer agent with adaptive validation patterns and comprehensive documentation updates.
+I'll coordinate bug fix specialists sequentially in the main context for: $ARGUMENTS
 
-## Usage
+## Fix Implementation Workflow
 
-This command triggers the @bug-fixer agent which will:
-- Inherit complete investigation context from central bug document
-- Determine optimal validation patterns based on risk and complexity
-- Coordinate appropriate validators using intelligent resource optimization
-- Implement test-first approach with comprehensive regression prevention
-- Update central bug document with complete fix implementation details
+**Step 1: Bug Fix Implementation**
+> Use the bug-fixer agent to implement the validated fix using investigation context from the central bug document
 
-## Context Inheritance
+**Step 2: Code Review**
+> Use the code-reviewer agent to validate fix quality, ensure no regressions, and verify enterprise pattern compliance
 
-The @bug-fixer automatically inherits investigation context including:
+**Step 3: Quality Assurance**
+> Use the qa-validator agent to ensure comprehensive test coverage including regression tests and edge case validation
+
+**Step 4: Performance Validation (if applicable)**
+> Use the performance-investigator agent to validate performance impact and ensure no performance regressions
+
+**Step 5: Security Review (if applicable)**
+> Use the security-investigator agent to validate security implications of the fix
+
+**Step 6: Bug Fix Documentation Update**
+> Use the bug-documentor agent to update bug documentation with fix details and validation results
+
+Each specialist operates in isolation and returns results for integration into the complete bug fix.
+
+## Context Integration
+
+The bug-fixer agent will automatically inherit investigation context from the central bug document including:
 - Validated root cause analysis with 95% confidence
 - Solution approach approved by domain experts
-- Specific fix locations and implementation guidance  
+- Specific fix locations and implementation guidance
 - Complexity, risk, and size assessments
-- Documentation foundation from central bug document
-
-## Fix Implementation Process
-
-Please use the Task tool to launch @bug-fixer with the following fix request:
-
-**Fix Target**: $ARGUMENTS
-
-**Context Source**: The @bug-fixer will automatically locate and load the investigation context from the central bug document, typically at `docs/development/bugs/BUG-YYYY-MMDD-HHMMSS-{slug}.md`.
-
-The @bug-fixer will:
-1. **Load investigation context** from central bug document with validated root cause and solution approach
-2. **Determine validation pattern** (comprehensive_parallel, focused_parallel, adaptive_focused, or minimal_targeted) based on inherited risk and complexity
-3. **Coordinate implementation** with test-first approach and real-time validator feedback
-4. **Execute adaptive validation** using Task tool to launch appropriate validators (@qa-validator, @performance-analyzer, @architecture-validator, @security-analyzer, plus investigation domain validators)
 5. **Apply quality gates** with risk-appropriate validation requirements
 6. **Update documentation** using @documentor to add comprehensive fix implementation details to central bug document
 

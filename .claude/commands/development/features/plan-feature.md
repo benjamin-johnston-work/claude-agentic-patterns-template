@@ -11,25 +11,33 @@ estimated-duration: 120
 # Primary Goals
 Execute comprehensive feature planning that matches architectural complexity to application size reality, establishing clear implementation roadmap and bounded context definitions while avoiding over-engineering through evidence-based design decisions.
 
-# Agent Coordination
-**Sequential Process - Phase 1 of 3-Phase Feature Development**
-- **Phase 1**: @feature-planner executes complete planning workflow from size assessment to architecture design
-- **Coordination Pattern**: Single-agent sequential execution with confidence gating
-- **Handoff Requirements**: Must achieve 7-10/10 planning confidence before proceeding to Phase 2
-- **Quality Gate**: All architectural decisions must be justified with evidence-based complexity assessment
+# Sequential Agent Coordination
 
-**Next Phase Integration**: Results directly feed into /research-feature command (Phase 2) for implementation-ready research
+I'll coordinate feature planning specialists sequentially in the main context for: $ARGUMENTS
+
+## Planning Workflow
+
+**Step 1: Feature Planning**
+> Use the feature-planner agent to execute comprehensive feature planning from size assessment to architecture design
+
+**Step 2: Architecture Validation** 
+> Use the architecture-validator agent to validate architectural decisions, DDD context mapping, and enterprise pattern consistency
+
+**Step 3: Security Review**
+> Use the security-planner agent to review security considerations, authentication patterns, and data protection compliance
+
+**Step 4: Feature Documentation**
+> Use the feature-documentor agent to create implementation-ready feature specification documentation
+
+Each specialist operates in isolation and returns results for integration into the final feature plan.
 
 # Success Criteria
-- **7-10/10 planning confidence** achieved through comprehensive analysis before proceeding to research phase
-- **Size-appropriate architecture** with complexity matching current application scale and realistic growth projections
-- **Evidence-based complexity justification** for all architectural decisions with cost-benefit analysis
-- **Clear implementation roadmap** with defined Onion Architecture layers, development sequence, and integration points
-- **DDD context mapping** with bounded context identification, domain relationships, and integration patterns
-- **Risk mitigation strategy** with identified challenges and concrete mitigation approaches
-
-# Feature Planning Process
-Please use @feature-planner to plan: $ARGUMENTS
+- **7-10/10 planning confidence** achieved through comprehensive analysis
+- **Size-appropriate architecture** with complexity matching current application scale  
+- **Evidence-based complexity justification** for all architectural decisions
+- **Clear implementation roadmap** with defined Onion Architecture layers
+- **DDD context mapping** with bounded context identification
+- **Security validation** ensuring enterprise compliance
 
 The feature planning follows this enterprise-grade 8-phase approach:
 
@@ -90,68 +98,15 @@ The feature planning follows this enterprise-grade 8-phase approach:
 
 **Confidence Gates**: Must achieve 7-10/10 planning confidence with evidence-based justification before transitioning to /research-feature command (Phase 2).
 
-# Multi-Phase Validation and Documentation
+The feature-planner agent will handle the comprehensive 8-phase planning process outlined above, then I'll coordinate the validation specialists in sequence to create the final validated feature plan.
 
-After @feature-planner completes the planning workflow and achieves 7-10/10 confidence, validate the plan through specialized reviewers before documentation synthesis:
+## Integration Process
 
-## Phase 1: Architecture Validation
-Use @architecture-validator to validate architectural decisions:
-- **Onion Architecture compliance** with proper layer separation and dependency direction
-- **DDD context mapping accuracy** with appropriate bounded contexts and domain relationships
-- **Enterprise pattern consistency** with existing codebase architecture
-- **Complexity justification** ensuring architectural decisions match application size and needs
-- **Integration pattern validation** for external service dependencies and system boundaries
+After each specialist completes their work, I'll integrate their outputs into a comprehensive feature plan document following the established structure:
 
-## Phase 2: Security Review
-Use @security-analyzer to review security considerations:
-- **Authentication and authorization patterns** appropriate for the feature requirements
-- **Data protection compliance** with privacy requirements and data handling standards
-- **External integration security** including API security and third-party service risks
-- **Input validation and sanitization** requirements for user-facing components
-- **Security architecture alignment** with enterprise security policies
+### Documentation Output
+- **Location**: `docs/development/features/business/{feature-name}/01-{feature-name}-plan-FEAT-{timestamp}.md`
+- **Structure**: Complete feature plan with all specialist validations integrated
+- **Format**: Enterprise documentation standards with evidence-based decisions
 
-## Phase 3: Feature Plan Documentation
-After validation phases complete, synthesize all planning and validation context into structured documentation:
-
-### Feature Plan Generation
-Create comprehensive planning documentation in: `docs/development/features/business/{feature-name}/01-{feature-name}-plan-FEAT-{timestamp}.md`
-
-The feature plan should synthesize all planning and validation context:
-
-### Plan Structure
-- **Feature ID and Metadata**: Unique identifier with timestamp and feature classification
-- **Feature Overview**: Clear description of feature purpose and business value
-- **Application Size Assessment**: Current codebase analysis and complexity matching
-- **Architecture Design**: Onion Architecture layers and established patterns integration
-- **DDD Context Mapping**: Bounded contexts, domain relationships, and integration patterns
-- **Security Considerations**: Authentication, authorization, and data protection requirements
-- **Implementation Roadmap**: Layer-by-layer development sequence with milestones
-- **Risk Assessment**: Technical challenges and mitigation strategies
-- **Validation Results**: Summary of architecture and security validation findings
-- **Success Metrics**: Measurable outcomes and acceptance criteria
-
-### File Naming Convention
-Use format: `01-{feature-name}-plan-FEAT-{timestamp}.md` where:
-- {feature-name} is a URL-safe version of the feature name
-- {timestamp} is YYYY-MMDD-HHMMSS format for the planning completion time
-
-### Folder Structure
-- **Business features**: `docs/development/features/business/{feature-name}/`
-- **Technical features**: `docs/development/features/technical/{feature-name}/`
-
-## Phase 4: Documentation Quality Validation
-Finally, use @documentor to validate documentation compliance:
-- **Structure compliance** with feature planning documentation standards
-- **Content completeness** ensuring all planning phases and validation results are documented
-- **Evidence quality** confirming architectural and security decisions are well-supported
-- **Formatting consistency** with established documentation patterns
-- **Implementation readiness** ensuring plan enables successful research phase
-
-### Documentation Requirements
-- All architectural decisions must be validated by @architecture-validator
-- Security considerations must be reviewed by @security-analyzer  
-- All validation findings must be incorporated into the final plan
-- Plan must enable /research-feature command execution with complete validated context
-- Documentation must pass @documentor validation before planning is considered complete
-
-This multi-phase validation ensures feature plans are architecturally sound, secure, and properly documented before proceeding to the research phase.
+This ensures feature plans are architecturally sound, secure, and properly documented before proceeding to the research phase.

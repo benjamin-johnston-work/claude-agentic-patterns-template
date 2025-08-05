@@ -3,43 +3,45 @@ description: Intelligent bug investigation with adaptive validation and comprehe
 argument-hint: [bug description] --complexity=[1-5] --risk=[low|medium|high|critical] --size=[small|medium|large|enterprise]
 ---
 
-# Intelligent Bug Investigation
+# Sequential Bug Investigation
 
-Execute comprehensive bug investigation using the specialized @bug-investigator agent with intelligent validator coordination and adaptive execution patterns.
+I'll coordinate bug investigation specialists sequentially in the main context for: $ARGUMENTS
 
-## Usage
+## Investigation Workflow
 
-This command triggers the @bug-investigator agent which will:
-- Automatically categorize the bug based on symptoms and context
-- Select appropriate specialist validators using intelligent algorithms
-- Execute optimal investigation patterns (parallel/sequential based on complexity/risk)
-- Create comprehensive documentation as central source of truth
+**Step 1: Bug Investigation**
+> Use the bug-investigator agent to execute comprehensive investigation including categorization, symptoms analysis, and initial root cause identification
+
+**Step 2: Hypothesis Validation**
+> Use the hypothesis-validator agent to systematically validate investigation hypotheses and ensure evidence-based analysis
+
+**Step 3: Security Analysis (if applicable)**
+> Use the security-investigator agent to assess security implications and identify potential security-related root causes
+
+**Step 4: Performance Analysis (if applicable)**
+> Use the performance-investigator agent to identify performance-related factors and bottlenecks
+
+**Step 5: Architecture Review (if applicable)**
+> Use the architecture-validator agent to validate architectural factors and system boundary issues
+
+**Step 6: Bug Investigation Documentation**
+> Use the bug-documentor agent to create comprehensive bug investigation documentation as central source of truth
+
+Each specialist operates in isolation and returns results for integration into the complete investigation.
+
+## Investigation Goals
 - Achieve 95% confidence in root cause identification
+- Create comprehensive documentation as central source of truth
+- Establish validated solution approach ready for implementation
 
-## Parameters
-
-- **complexity**: 1-5 scale (1=simple config, 5=enterprise architecture)
-- **risk**: low/medium/high/critical (based on environment impact)  
-- **size**: small/medium/large/enterprise (based on investigation scope)
-
-## Investigation Process
-
-Please use the Task tool to launch @bug-investigator with the following investigation request:
-
-**Bug Description**: $ARGUMENTS
+**Investigation Context**:
 
 **Investigation Parameters**:
 - Complexity assessment: Use provided --complexity parameter or auto-detect from symptoms
 - Risk assessment: Use provided --risk parameter or auto-detect from environment context
 - Size assessment: Use provided --size parameter or auto-detect from scope indicators
 
-The @bug-investigator will:
-1. **Analyze and categorize** the bug using intelligent categorization algorithms
-2. **Select optimal validators** from available specialists (@auth-flow-analyzer, @config-validator, @log-analyzer, @startup-dependency-analyzer, @security-analyzer, @performance-analyzer, @architecture-validator, @hypothesis-validator)
-3. **Determine execution pattern** (parallel_comprehensive, parallel_focused, adaptive_sequential_parallel, or sequential_optimized)
-4. **Coordinate investigation** using Task tool to launch appropriate validators
-5. **Synthesize findings** with cross-domain evidence correlation and consensus building
-6. **Create documentation** using @documentor for central source of truth bug document
+Please use @bug-investigator to investigate: $ARGUMENTS
 
 ## Expected Outcomes
 

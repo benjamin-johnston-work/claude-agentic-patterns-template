@@ -19,19 +19,19 @@ Deliver a comprehensive code quality assessment through coordinated parallel ana
 
 **PARALLEL EXECUTION** - Execute simultaneously for comprehensive coverage:
 
-1. **@security-analyzer**: Security vulnerability assessment
+1. **security-investigator agent**: Security vulnerability assessment
    - Identify security anti-patterns and vulnerabilities
    - Validate input sanitization and authentication flows
    - Check for hardcoded secrets and insecure configurations
    - Assess API security and data exposure risks
 
-2. **@performance-analyzer**: Performance optimization analysis  
+2. **performance-investigator agent**: Performance optimization analysis  
    - Identify performance bottlenecks and anti-patterns
    - Analyze resource usage and memory management
    - Validate database query efficiency and caching strategies
    - Assess algorithmic complexity and optimization opportunities
 
-3. **@architecture-validator**: Architecture and design pattern validation
+3. **architecture-validator agent**: Architecture and design pattern validation
    - Validate adherence to established patterns (SOLID, DDD, Clean Architecture)
    - Assess separation of concerns and dependency management
    - Evaluate code organization and modular design
@@ -39,7 +39,7 @@ Deliver a comprehensive code quality assessment through coordinated parallel ana
 
 **SEQUENTIAL EXECUTION** - After parallel analysis completion:
 
-4. **@documentor**: Documentation quality and completeness
+4. **feature-documentor agent**: Documentation quality and completeness
    - Consolidate findings from all analysts
    - Generate comprehensive review report with prioritized recommendations
    - Ensure all issues have specific file:line references
@@ -69,7 +69,7 @@ Deliver a comprehensive code quality assessment through coordinated parallel ana
 
 # Code Review Documentation
 
-After all parallel analysis and @documentor coordination complete, synthesize findings into a structured code review document:
+After all parallel analysis and feature-documentor agent coordination complete, synthesize findings into a structured code review document:
 
 ## Review Report Generation
 Create comprehensive code review documentation in: `docs/development/reviews/REVIEW-YYYY-MMDD-HHMMSS-{scope}.md`
@@ -93,9 +93,9 @@ Use format: `REVIEW-YYYY-MMDD-HHMMSS-{scope}.md` where:
 - {scope} describes the review scope (e.g., "payment-module", "api-security", "full-codebase")
 
 ## Final Documentation Validation
-After creating the review report, use @documentor to validate final documentation quality:
+After creating the review report, use the feature-documentor agent to validate final documentation quality:
 
-Please use @documentor to validate the generated code review report for:
+Please use the feature-documentor agent to validate the generated code review report for:
 - **Structure compliance** with code review documentation standards
 - **Content completeness** ensuring all analysis findings are properly documented
 - **Actionability** confirming all recommendations have specific implementation guidance
@@ -109,6 +109,6 @@ Please use @documentor to validate the generated code review report for:
 - Architecture recommendations must reference established patterns
 - All recommendations must include effort estimates and implementation examples
 - Review must enable informed decision-making on code quality improvements
-- Documentation must pass @documentor validation before review is considered complete
+- Documentation must pass feature-documentor agent validation before review is considered complete
 
 This comprehensive approach ensures code reviews provide actionable insights while maintaining consistent documentation standards.

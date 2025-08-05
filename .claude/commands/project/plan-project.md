@@ -1,142 +1,41 @@
 ---
-description: Comprehensive project planning using specialized planning agents with manager-worker coordination
-argument-hint: [project description] --scope=[small|medium|large|enterprise] --timeline=[months]
+description: Complete project planning from MVP delivery (2-4 weeks) through iterative evolution to enterprise-ready end state, using clean architecture and database-first design to avoid refactoring and migrations
+argument-hint: [project description] --mode=[auto|fast|comprehensive] --tech-stack=[preferences]
 ---
 
-# Comprehensive Project Planning
+# Complete MVP-to-Enterprise Project Planning
 
-Execute complete project planning using the specialized @planners/project-planner master coordinator with intelligent specialist coordination following official Claude Code patterns.
+I'll coordinate specialist agents sequentially to create a complete project evolution plan from MVP delivery to enterprise-ready end state for: $ARGUMENTS
 
-## Usage
+## Complete Evolution Planning Workflow
 
-This command triggers the @planners/project-planner master coordinator which will:
-- Perform evidence-first project analysis with systematic confidence building
-- Coordinate specialized planning agents using explicit Task tool invocation
-- Integrate architecture, technology, and validation specialist outputs
-- Create comprehensive project plan documentation in docs/projects/ folder
-- Achieve 8/10+ confidence in project feasibility and approach
+I'll execute the following sequence to plan the entire journey from MVP to enterprise scale:
 
-## Parameters
+1. **MVP-to-Enterprise Architecture Planning**: Use the architecture-planner agent to design the complete evolution path with database-first design, clean architecture from day one, and clear progression from MVP through transitional states to enterprise-ready end state
+2. **Technology Stack Planning**: Use the tech-stack-planner agent to select technologies that support the entire evolution journey without requiring migrations or refactoring  
+3. **Complete Evolution Validation**: Use the project-validator agent to validate the feasibility of the entire MVP-to-enterprise journey including 2-4 week MVP delivery and all evolution phases
+4. **Enterprise Architecture Compliance**: Use the architecture-validator agent to validate that the complete evolution maintains enterprise standards throughout all phases
+5. **Complete Project Documentation**: Use the project-documentor agent to document the entire evolution strategy with MVP delivery plan, iteration phases, and enterprise-ready end state
 
-- **scope**: small/medium/large/enterprise (project complexity and resource requirements)
-- **timeline**: Expected project duration in months for resource planning
-- **--tech-stack**: Optional technology preferences (e.g., ".net-core,azure,react")
-- **--architecture**: Optional architecture preferences (e.g., "microservices,ddd,onion")
+Each agent plans for the COMPLETE journey, not just MVP - ensuring clean evolution without refactoring or migrations.
 
-## Project Planning Process
+## Process
 
-Please use the Task tool to launch @planners/project-planner with the following project planning request:
+Let me start by analyzing your project requirements and then sequentially coordinate with each specialist agent:
 
-**Project Description**: $ARGUMENTS
+**Step 1: Complete Architecture Evolution Planning**
+> Use the architecture-planner agent to design the complete MVP-to-enterprise evolution path including database-first design, clean architecture from day one, C4 evolution diagrams showing MVP → Transitional → End State progression, and enterprise patterns that avoid refactoring throughout the journey.
 
-**Planning Parameters**:
-- Scope assessment: Use provided --scope parameter or auto-detect from project complexity
-- Timeline framework: Use provided --timeline parameter or estimate from project scope
-- Technology preferences: Use provided --tech-stack parameter or determine optimal stack
-- Architecture preferences: Use provided --architecture parameter or select enterprise patterns
+**Step 2: Evolution-Ready Technology Stack Planning** 
+> Use the tech-stack-planner agent to select technologies that support the entire evolution journey from 2-4 week MVP delivery through enterprise scale without requiring technology migrations or architectural refactoring.
 
-The @planners/project-planner will:
+**Step 3: Complete Evolution Feasibility Validation**
+> Use the project-validator agent to validate the feasibility of delivering working software in 2-4 weeks AND the complete evolution path to enterprise scale, ensuring realistic timelines and resource requirements for the entire journey.
 
-### Phase 1: Project Analysis and Requirements
-- Evidence-first project requirements analysis (10% → 95% confidence building)
-- Business objective extraction and success criteria definition
-- Scope, constraint, and assumption documentation
-- Stakeholder requirement analysis and validation
+**Step 4: Enterprise Architecture Compliance Throughout Evolution**
+> Use the architecture-validator agent to validate that enterprise standards (Onion Architecture, DDD, Clean Architecture) are maintained throughout all evolution phases from MVP to enterprise scale.
 
-### Phase 2: Specialized Planning Coordination
-The master coordinator will use explicit Task tool invocation for specialist coordination:
+**Step 5: Complete Evolution Documentation**
+> Use the project-documentor agent to create comprehensive documentation covering the 2-4 week MVP delivery plan, all iteration phases with business value gates, and the complete roadmap to enterprise-ready end state.
 
-**Architecture Planning**:
-```
-Use the `architecture-planner` agent to design the enterprise architecture for:
-- Project requirements: [extracted from analysis]
-- Business context: [business objectives and constraints]
-- Architecture preferences: [specified or determined preferences]
-- Integration requirements: [system integration needs]
-```
-
-**Technology Stack Planning**:
-```
-Use the `tech-stack-planner` agent to select and plan the technology stack for:
-- Architecture approach: [from architecture-planner results]
-- Project requirements: [technical and performance requirements]
-- Technology preferences: [specified or recommended technologies]
-- Integration patterns: [technology integration requirements]
-```
-
-**Project Validation**:
-```
-Use the `project-validator` agent to validate the complete project plan:
-- Architecture design: [comprehensive architecture from specialist]
-- Technology selection: [complete technology stack from specialist]  
-- Resource requirements: [estimated team and infrastructure needs]
-- Risk assessment: [identified risks and mitigation strategies]
-```
-
-**Security Requirements**:
-```
-Use the `security-analyzer` agent to validate security requirements for:
-- Project architecture: [security architecture implications]
-- Technology stack: [technology security considerations]
-- Compliance requirements: [enterprise security and compliance standards]
-- Risk mitigation: [security risk assessment and mitigation]
-```
-
-### Phase 3: Plan Integration and Quality Assurance
-- Assumption detection using @hypothesis-validator to prevent planning assumptions
-- Cross-domain specialist output integration and conflict resolution
-- Plan coherence validation and quality assessment
-- Evidence-based confidence building to 8/10+ threshold
-
-### Phase 4: Documentation Synthesis
-```
-Use the `documentor` agent to create comprehensive project plan documentation:
-- Integrated project plan: [synthesis of all specialist planning outputs]
-- Documentation location: docs/projects/project-{slug}.md
-- Target audience: Technical and business stakeholders
-- Content structure: Executive summary, architecture, technology, validation, implementation roadmap
-```
-
-## Expected Outcomes
-
-- **8/10+ confidence** project plan with evidence-based feasibility validation
-- **Comprehensive project plan** at `docs/projects/project-{slug}.md`
-- **Enterprise architecture design** with C4 diagrams and DDD patterns
-- **Complete technology stack** specification with Azure services and .NET technologies
-- **Risk assessment and mitigation** strategies for identified project risks
-- **Resource requirements** analysis with team and infrastructure specifications
-- **Implementation roadmap** with phases, milestones, and timeline estimates
-
-## Integration with Implementation Commands
-
-Project planning results automatically provide complete context for implementation commands:
-- `/development/features/implement-feature` can use project architecture and technology specifications
-- `/development/technical/implement-tech-task` can leverage project technology stack and patterns
-- `/development/technical/design-tech-task` can follow project architecture and design decisions
-
-## Examples
-
-### Enterprise E-commerce Platform
-```bash
-/project/plan-project "Design a platform that works like tetris on azure" --scope=medium --timeline=6 --tech-stack=".net-core,azure,react"
-```
-
-### Microservices Platform
-```bash
-/project/plan-project "Multi-tenant SaaS platform with microservices architecture" --scope=large --timeline=12 --architecture="microservices,ddd,event-driven"
-```
-
-### Simple Business Application
-```bash
-/project/plan-project "Employee management system with reporting dashboard" --scope=small --timeline=3 --tech-stack=".net-core,azure-sql,blazor"
-```
-
-## Manager-Worker Coordination Benefits
-
-**Context Isolation**: Each specialist operates in isolated context window for deep domain focus
-**Quality Through Specialization**: Architecture, technology, and validation specialists provide expert analysis
-**Explicit Coordination**: Master coordinator uses clear Task tool invocation following official Claude Code patterns
-**Human Oversight**: Strategic decision points for business alignment and approval
-**Resource Efficiency**: Parallel specialist work with intelligent master coordination
-
-This command follows official Claude Code documentation for manager-worker patterns with single responsibility agents, context isolation, and explicit sub-agent coordination.
+Each specialist plans the COMPLETE evolution strategy - from immediate value delivery through enterprise scale - ensuring clean, iterative growth without technical debt or architectural refactoring.

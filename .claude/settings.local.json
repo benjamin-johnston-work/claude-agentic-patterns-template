@@ -10,30 +10,20 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(gh run list:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(Remove-Item -Path \"C:\\Dev\\Claude\\.claude\\agents\\planners\\project-planner.md\" -Force)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "WebFetch(domain:martinfowler.com)",
+      "WebFetch(domain:docs.microsoft.com)",
+      "WebFetch(domain:learn.microsoft.com)"
     ],
     "deny": []
-  },
-  "mcps": {
-    "context7s": {
-      "command": "context7s",
-      "args": [
-        "--api-key",
-        "${CONTEXT7S_API_KEY}"
-      ],
-      "env": {
-        "CONTEXT7S_API_KEY": "${CONTEXT7S_API_KEY}"
-      }
-    }
-  },
-  "agent_execution_monitoring": {
-    "enabled": true,
-    "validation_gates": true,
-    "tool_usage_tracking": true,
-    "quality_thresholds": {
-      "confidence_gate": 95,
-      "documentation_required": true,
-      "validator_approval_required": true
-    }
   }
 }

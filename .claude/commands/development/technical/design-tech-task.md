@@ -10,24 +10,33 @@ estimated-duration: 75
 # Primary Goals
 Execute comprehensive technical task design focused on simple, standard solutions using boring technology and proven patterns to solve specific business problems while avoiding over-engineering and unnecessary complexity.
 
-# Agent Coordination
-**Sequential Process - Phase 1 of 2-Phase Technical Development**
-- **Phase 1**: @tech-task-designer executes complete design workflow from problem analysis to implementation blueprint
-- **Coordination Pattern**: Single-agent sequential execution with confidence gating
-- **Handoff Requirements**: Must achieve 8/10+ design confidence before proceeding to Phase 2
-- **Quality Gate**: All complexity must be justified by actual requirements with standard tooling validation
+# Sequential Agent Coordination
 
-**Next Phase Integration**: Results directly feed into /implement-tech-task command (Phase 2) for implementation execution
+I'll coordinate technical design specialists sequentially in the main context for: $ARGUMENTS
+
+## Design Workflow
+
+**Step 1: Technical Design**
+> Use the tech-task-designer agent to execute comprehensive technical design including problem analysis, boring technology validation, and implementation blueprint creation
+
+**Step 2: Architecture Validation**
+> Use the architecture-validator agent to validate design decisions, complexity justification, and enterprise pattern compliance
+
+**Step 3: Security Review (if applicable)**
+> Use the security-planner agent to review security implications and validate security design patterns
+
+**Step 4: Technical Design Documentation**
+> Use the tech-task-documentor agent to create implementation-ready technical design documentation
+
+Each specialist operates in isolation and returns results for integration into the complete technical design.
 
 # Success Criteria
-- **8/10+ design confidence** achieved through comprehensive analysis and boring technology validation
-- **Complexity justification** with all architectural decisions backed by specific business or technical requirements
-- **Standard tooling validation** confirming existing tools can solve the problem before custom implementation
-- **Step-by-step implementation blueprint** with detailed sequence and tooling specifications
-- **Business value proposition** clearly articulated with measurable outcomes
-- **Risk assessment** with fallback strategies and rollback procedures
-
-# Technical Design Process
+- **8/10+ design confidence** achieved through comprehensive analysis
+- **Complexity justification** with all decisions backed by requirements
+- **Boring technology validation** confirming standard tooling usage
+- **Implementation blueprint** with detailed sequence and specifications
+- **Business value proposition** with measurable outcomes
+- **Risk assessment** with fallback strategies
 Please use @tech-task-designer to design: $ARGUMENTS
 
 The technical design follows this comprehensive 8-phase approach:

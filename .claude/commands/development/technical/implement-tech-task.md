@@ -11,23 +11,28 @@ estimated-duration: 60-180
 # Primary Goals
 Execute precise technical solution implementation following exact design specifications with 90%+ compliance, using standard tooling and boring technology to deliver business value while preserving existing functionality and maintaining architectural simplicity.
 
-# Agent Coordination
-**Intelligent Orchestration - Phase 2 of 2-Phase Technical Development**
+# Sequential Agent Coordination
 
-## Coordination Pattern Selection
-Command analyzes design complexity and selects appropriate coordination strategy:
+I'll coordinate technical implementation specialists sequentially in the main context for: $ARGUMENTS
 
-### Simple Mode (Complexity < 6)
-- **Primary Agent**: @tech-task-implementor
-- **Pattern**: Dependency-free parallel subagents (current approach)
-- **Subagents**: Code generation, configuration, testing in parallel
-- **Use Case**: Standard technical tasks with minimal cross-domain impact
+## Implementation Workflow
 
-### Medium Mode (Complexity 6-7)
-- **Primary Agent**: @tech-task-implementor as coordinator
-- **Pattern**: Parallel validation with synthesis
-- **Parallel Agents**: @code-reviewer, @security-analyzer based on risk factors
-- **Use Case**: Multi-domain tasks requiring specialized validation
+**Step 1: Technical Implementation**
+> Use the tech-task-implementor agent to execute precise technical solution implementation following design specifications
+
+**Step 2: Code Review**
+> Use the code-reviewer agent to validate design compliance, code quality, and enterprise pattern adherence
+
+**Step 3: Quality Validation**
+> Use the qa-validator agent to ensure testing coverage and validate business functionality preservation
+
+**Step 4: Security Analysis (if applicable)**
+> Use the security-investigator agent to validate security patterns for security-related technical tasks
+
+**Step 5: Technical Implementation Documentation**
+> Use the tech-task-documentor agent to update technical documentation with implementation details and guides
+
+Each specialist operates in isolation and returns results for integration into the complete technical solution.
 
 ### Complex Mode (Complexity 8+)
 - **Primary Agent**: @tech-task-implementor as master coordinator
@@ -44,7 +49,7 @@ Command parses `docs/development/techtasks/{task-name}-design.md` to extract:
 - **Security Triggers**: Mandatory security validation for sensitive components
 
 ### Mandatory Security Validation Triggers
-**Always spawn @security-analyzer regardless of complexity if any present**:
+**Always spawn @security-investigator regardless of complexity if any present**:
 - **Azure Managed Identity** (system-assigned, user-assigned)
 - **Authentication systems** (JWT, OAuth, SAML, etc.)
 - **Authorization frameworks** (RBAC, claims-based, policy-based)
@@ -92,12 +97,12 @@ fi
 
 **If Complexity < 6 (Simple Mode)**:
 Use @tech-task-implementor with dependency-free parallel subagents approach.
-- **Security Override**: Always add @security-analyzer if SECURITY_MANDATORY=true
+- **Security Override**: Always add @security-investigator if SECURITY_MANDATORY=true
 
 **If Complexity 6-7 (Medium Mode)**:
 Use @tech-task-implementor as coordinator with parallel validators:
 - Always spawn @code-reviewer for architecture compliance validation
-- Always spawn @security-analyzer if SECURITY_MANDATORY=true OR security risk factors present
+- Always spawn @security-investigator if SECURITY_MANDATORY=true OR security risk factors present
 - Synthesize findings and resolve conflicts before implementation
 
 **If Complexity 8+ (Complex Mode)**:
@@ -105,7 +110,7 @@ Use @tech-task-implementor as master coordinator with domain specialists:
 - Spawn @backend-developer if backend domain required
 - Spawn @frontend-developer if frontend domain required  
 - Spawn @database-specialist if database domain required
-- **Security Override**: Always add @security-analyzer if SECURITY_MANDATORY=true OR security present in any domain
+- **Security Override**: Always add @security-investigator if SECURITY_MANDATORY=true OR security present in any domain
 - Coordinate cross-domain integration and handoffs
 
 ## Implementation Execution
@@ -128,7 +133,7 @@ The technical implementation follows coordination-specific approach:
 ### Medium Mode Implementation (Complexity 6-7)
 **Parallel Validation Approach**:
 1. **Design Analysis & Agent Spawning**: @tech-task-implementor analyzes risk factors and spawns appropriate validators
-2. **Parallel Validation**: Run @code-reviewer and @security-analyzer (if security risks present) simultaneously
+2. **Parallel Validation**: Run @code-reviewer and @security-investigator (if security risks present) simultaneously
 3. **Finding Synthesis**: @tech-task-implementor correlates validation findings and resolves conflicts
 4. **Validated Implementation**: Execute implementation incorporating validator recommendations
 5. **Cross-Domain Integration**: Ensure consistency across validation domains
@@ -201,7 +206,7 @@ The technical implementation follows coordination-specific approach:
 ### Medium Complexity Task (Complexity 6-7)
 ```bash
 /implement-tech-task "multi-service-authentication-integration"
-# Spawns @code-reviewer and @security-analyzer in parallel
+# Spawns @code-reviewer and @security-investigator in parallel
 # Result: Validated implementation with enhanced security compliance
 ```
 

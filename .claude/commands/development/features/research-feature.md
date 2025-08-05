@@ -98,7 +98,7 @@ The feature research follows this comprehensive 8-phase approach:
 After @feature-researcher completes the research workflow and achieves 9-10/10 implementation confidence, validate the research through specialized reviewers before documentation synthesis:
 
 ## Phase 1: Security Research Validation
-Use @security-analyzer to validate security research findings:
+Use @security-investigator to validate security research findings:
 - **External integration security** reviewing API security patterns and authentication flows
 - **Data protection implementation** validating privacy requirements and data handling approaches
 - **Security testing strategy** ensuring security test scenarios are comprehensive
@@ -106,7 +106,7 @@ Use @security-analyzer to validate security research findings:
 - **Compliance validation** ensuring research aligns with enterprise security policies
 
 ## Phase 2: Performance Analysis
-Use @performance-analyzer to review performance considerations:
+Use @performance-investigator to review performance considerations:
 - **Performance bottleneck identification** validating optimization approaches and benchmarks  
 - **Load testing strategy** ensuring performance test scenarios cover realistic usage patterns
 - **Scalability analysis** confirming architecture can handle projected growth
@@ -147,7 +147,7 @@ Use format: `02-{feature-name}-research-FEAT-{timestamp}.md` where:
 - {timestamp} is YYYY-MMDD-HHMMSS format for the research completion time
 
 ## Phase 5: Documentation Quality Validation
-Finally, use @documentor to validate documentation compliance:
+Finally, use the feature-documentor agent to validate documentation compliance:
 - **Structure compliance** with feature research documentation standards
 - **Content completeness** ensuring all research phases and validation results are documented
 - **Implementation readiness** confirming research enables single-pass development success
@@ -155,11 +155,11 @@ Finally, use @documentor to validate documentation compliance:
 - **Formatting consistency** with established documentation patterns
 
 ### Documentation Requirements
-- All security considerations must be validated by @security-analyzer
-- Performance analysis must be reviewed by @performance-analyzer
-- Architectural research must be validated by @architecture-validator
+- All security considerations must be validated by security-investigator agent
+- Performance analysis must be reviewed by performance-investigator agent
+- Architectural research must be validated by architecture-validator agent
 - All validation findings must be incorporated into the final research document
 - Research must enable /implement-feature command execution with complete validated context
-- Documentation must pass @documentor validation before research is considered complete
+- Documentation must pass feature-documentor agent validation before research is considered complete
 
 This multi-phase validation ensures research findings are comprehensive, accurate, and properly validated before proceeding to the implementation phase.

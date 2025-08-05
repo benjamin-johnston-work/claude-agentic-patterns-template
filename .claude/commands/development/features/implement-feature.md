@@ -10,26 +10,39 @@ estimated-duration: 180
 # Primary Goals
 Execute comprehensive feature implementation as master coordinator using research context, following enterprise architecture patterns with layer-by-layer development to deliver business value while preserving all existing functionality and maintaining architectural integrity.
 
-# Agent Coordination
-**Sequential Process - Phase 3 of 3-Phase Feature Development (Master Coordinator Role)**
-- **Phase 3**: @feature-implementor serves as master coordinator executing complete implementation workflow
-- **Coordination Pattern**: Single-agent sequential execution with comprehensive validation gating
-- **Prerequisites**: Must follow /research-feature command (Phase 2) with 9-10/10 implementation confidence
-- **Master Coordinator Responsibilities**: Orchestrates entire implementation lifecycle from context loading through production validation
-- **Quality Gates**: All tests must pass, business functionality preserved, and architecture compliance validated before completion
+# Sequential Agent Coordination
 
-**Context Integration**: Inherits complete research context including implementation blueprint, codebase analysis, and proven patterns
+I'll coordinate feature implementation specialists sequentially in the main context for: $ARGUMENTS
+
+## Implementation Workflow
+
+**Step 1: Feature Implementation**
+> Use the feature-implementor agent to execute comprehensive layer-by-layer implementation following enterprise architecture patterns
+
+**Step 2: Code Review**
+> Use the code-reviewer agent to validate enterprise architecture compliance, SOLID principles, and code quality standards
+
+**Step 3: Quality Assurance**
+> Use the qa-validator agent to ensure comprehensive test coverage and validate business functionality preservation
+
+**Step 4: Performance Validation**
+> Use the performance-investigator agent to validate performance baselines and identify optimization opportunities
+
+**Step 5: Security Review**
+> Use the security-investigator agent to validate security patterns and identify potential vulnerabilities
+
+**Step 6: Feature Implementation Documentation**
+> Use the feature-documentor agent to update feature documentation with implementation details and create deployment guides
+
+Each specialist operates in isolation and returns results for integration into the complete feature implementation.
 
 # Success Criteria
-- **Complete feature delivery** with all business requirements satisfied and user workflows functional
-- **Zero breaking changes** with all existing API contracts and business processes preserved
-- **Enterprise architecture compliance** maintaining Onion Architecture layers, SOLID principles, and DDD patterns
-- **Comprehensive test coverage** with 80%+ unit test coverage using NO MOCKING policy
-- **Production readiness** with monitoring, logging, error handling, and rollback capabilities
-- **Performance validation** ensuring new functionality meets or exceeds performance baselines
-
-# Feature Implementation Process
-Please use @feature-implementor to implement: $ARGUMENTS
+- **Complete feature delivery** with all business requirements satisfied
+- **Zero breaking changes** with all existing functionality preserved
+- **Enterprise architecture compliance** with proper layer separation
+- **80%+ test coverage** using NO MOCKING policy
+- **Production readiness** with monitoring and error handling
+- **Performance validation** meeting baseline requirements
 
 The feature implementation follows this master coordinator approach with 8-phase execution:
 
@@ -137,7 +150,7 @@ Use @architecture-validator to validate architectural implementation:
 - **Integration pattern validation** ensuring external service integrations follow enterprise standards
 
 ## Phase 2: Security Implementation Review
-Use @security-analyzer to review security implementation:
+Use @security-investigator to review security implementation:
 - **Authentication and authorization** validating proper implementation of security patterns
 - **Data protection compliance** ensuring privacy requirements and data handling are correctly implemented
 - **Input validation and sanitization** confirming all user inputs are properly secured
@@ -145,7 +158,7 @@ Use @security-analyzer to review security implementation:
 - **Security testing coverage** ensuring security test scenarios adequately cover implementation
 
 ## Phase 3: Performance Implementation Analysis
-Use @performance-analyzer to analyze performance implementation:
+Use @performance-investigator to analyze performance implementation:
 - **Performance optimization** validating that optimization strategies were properly implemented
 - **Load handling capability** confirming implementation can handle projected usage patterns
 - **Resource utilization** ensuring efficient use of system resources
@@ -195,8 +208,8 @@ Finally, use @documentor to validate documentation compliance:
 
 ### Documentation Requirements
 - All architectural implementation must be validated by @architecture-validator
-- Security implementation must be reviewed by @security-analyzer
-- Performance implementation must be analyzed by @performance-analyzer
+- Security implementation must be reviewed by @security-investigator
+- Performance implementation must be analyzed by @performance-investigator
 - Overall quality must be validated by @qa-validator
 - All validation findings must be incorporated into the final implementation document
 - Documentation must pass @documentor validation before implementation is considered complete

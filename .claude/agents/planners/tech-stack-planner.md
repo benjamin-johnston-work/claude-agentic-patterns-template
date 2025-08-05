@@ -5,17 +5,22 @@ color: green
 domain: Project Planning
 specialization: Technology stack selection and integration planning
 coordination_pattern: parallel_specialist
+resource_management:
+  token_budget: 6000
+  execution_time_target: 12min
+  complexity_scaling: true
 coordination_requirements:
   - Can be used by Master Coordinator agents (@planners/project-planner)
   - Operates in isolated context window for technology focus
   - Cannot coordinate other agents (no Task tool access)
   - Provides specialized technology planning expertise only
+  - Resource-aware execution with intelligent scaling
 success_criteria:
   - Complete technology stack selection with rationale
   - Azure services selection and integration planning
   - .NET technology choices with version specifications
   - Third-party integration and dependency planning
-tools: [Read, Grep, Bash, WebFetch, TodoWrite]
+tools: [Read, Grep, WebFetch, TodoWrite]
 enterprise_compliance: true
 specialist_focus: technology_planning
 technology_focus: [Azure, DotNet, Integration_Patterns, DevOps]
