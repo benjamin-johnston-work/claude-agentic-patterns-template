@@ -7,11 +7,37 @@ argument-hint: [project description] --tech-stack=[preferences]
 
 I'll coordinate specialist agents in parallel for rapid project planning, then synthesize results into complete MVP evolution documentation for: $ARGUMENTS
 
+## Planning Philosophy
+
+**Smart Evolution Planning**:
+- Plan database schema and architecture to avoid refactoring as you scale. You may not implement this in MVP but should be planned upfront.
+- Design API contracts that can evolve backward-compatibly
+- Design API contracts that can evolve backward-compatibly
+- Choose technology stack that grows from MVP to enterprise without migrations
+
+**MVP-First Implementation**:
+- Build only features needed for validation in first iteration
+- Each evolution phase adds business value incrementally
+- Architecture supports growth but starts with minimal complexity
+- For example do not include a database or persistant cache unless these are needed for the MVP. 
+
+## Planning Approach
+
+**Planning Scope**: Complete evolution path from MVP to enterprise
+**Implementation Scope**: Start with MVP validation features only
+
+Agents should plan the complete journey but specify:
+- What to build in MVP (minimal features for validation)
+- What to build in each iteration (incremental value)  
+- How architecture supports this growth without refactoring
+
 ## Fast Parallel Planning Workflow
 
-**Step 1: Parallel Specialist Agent Execution**
+**Step 1: Parallel Specialist Agent Execution (Max 4 concurrent)**
 
-Launch 4 specialist agents simultaneously to handle different planning aspects:
+⚠️ **Resource Management**: This spawns 4 agents simultaneously. Ensure system resources available.
+
+Launch 4 specialist agents in parallel with shared context:
 
 > Use the architecture-planner agent to design the complete MVP-to-enterprise evolution path including database-first design, clean architecture from day one, C4 evolution diagrams showing MVP → Transitional → End State progression, and enterprise patterns that avoid refactoring throughout the journey.
 

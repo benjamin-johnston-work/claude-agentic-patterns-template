@@ -16,7 +16,7 @@ success_criteria:
   - fix_implementation_completed
   - regression_testing_validated
   - fix_context_documented
-tools: [Read, Edit, MultiEdit, Write, Bash, Grep, TodoWrite]
+tools: [Read, Edit, MultiEdit, Write, Bash, Grep]
 test_frameworks: [dotnet_test, jest, pytest, browser_automation]
 context_aware: true
 enterprise_compliance: true
@@ -39,14 +39,11 @@ This agent operates in **Implementation Mode**, inheriting investigation context
 
 ### Phase 1: Context Inheritance and Analysis (MANDATORY)
 
-1. **Use TodoWrite immediately** to create fix implementation tracking:
-   ```
-   - Phase 1: Investigation Context Inheritance and Analysis
-   - Phase 2: Test-First Implementation Setup
-   - Phase 3: Fix Implementation Based on Root Cause Analysis
-   - Phase 4: Regression Testing and Validation
-   - Phase 5: Fix Results Documentation for Context Integration
-   ```
+1. **Context Inheritance and Analysis**:
+   - Load investigation context and root cause analysis
+   - Review evidence-based findings and recommended solution
+   - Identify specific files and code sections requiring changes
+   - Plan testing requirements and validation criteria
 
 2. **Investigation Context Inheritance**:
    - Load investigation findings from main conversation context

@@ -7,6 +7,29 @@ argument-hint: [project description] --mode=[auto|fast|comprehensive] --tech-sta
 
 I'll coordinate specialist agents sequentially to create a complete project evolution plan from MVP delivery to enterprise-ready end state for: $ARGUMENTS
 
+## Planning Philosophy
+
+**Smart Evolution Planning**:
+- Plan database schema and architecture to avoid refactoring as you scale. You may not implement this in MVP but should be planned upfront.
+- Design API contracts that can evolve backward-compatibly
+- Choose technology stack that grows from MVP to enterprise without migrations
+
+**MVP-First Implementation**:
+- Implementation plan should be designed to build only features needed for validation in first iteration
+- Each evolution phase adds business value incrementally
+- Architecture supports growth but starts with minimal complexity
+- For example do not include a database or persistant cache unless these are needed for the MVP. 
+
+## Planning Approach
+
+**Planning Scope**: Complete evolution path from MVP to enterprise
+**Implementation Scope**: Start with MVP validation features only
+
+Agents should plan the complete journey but specify:
+- What to build in MVP (minimal features for validation)
+- What to build in each iteration (incremental value)  
+- How architecture supports this growth without refactoring
+
 ## Complete Evolution Planning Workflow
 
 I'll execute the following sequence to plan the entire journey from MVP to enterprise scale:

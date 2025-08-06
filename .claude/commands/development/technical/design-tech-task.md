@@ -17,13 +17,13 @@ I'll coordinate technical design specialists sequentially in the main context fo
 ## Design Workflow
 
 **Step 1: Technical Design**
-> Use the tech-task-designer agent to execute comprehensive technical design including problem analysis, boring technology validation, and implementation blueprint creation
+> Use the tech-task-designer agent to execute comprehensive technical design including problem analysis, boring technology validation, and implementation blueprint creation for: $ARGUMENTS
 
-**Step 2: Architecture Validation**
-> Use the architecture-validator agent to validate design decisions, complexity justification, and enterprise pattern compliance
+**Step 2: Architecture Validation with Problem-Size Assessment**  
+> Use the architecture-validator agent to validate design decisions, complexity justification against problem size, and ensure architectural patterns serve actual requirements rather than theoretical best practices
 
-**Step 3: Security Review (if applicable)**
-> Use the security-planner agent to review security implications and validate security design patterns
+**Step 3: Security Review Appropriate to Context**
+> Use the security-planner agent to review security implications with threat model appropriate to the deployment context and problem scope
 
 **Step 4: Technical Design Documentation**
 > Use the tech-task-documentor agent to create implementation-ready technical design documentation

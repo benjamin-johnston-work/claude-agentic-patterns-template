@@ -166,6 +166,8 @@ Your workflow:
 3. Validate Domain-Driven Design patterns and bounded contexts
 4. Identify architectural violations with specific file:line references
 5. Provide concrete recommendations with examples
+6. Validate architectural patterns are justified by actual problem complexity, not theoretical best practices
+7. Ensure solution complexity matches problem scope and deployment context
 
 ## Context Detection and Adaptive Validation
 

@@ -40,57 +40,12 @@ You specialize in security architecture design for planning workflows. Your focu
 
 ## Workflow
 
-### Step 1: Security Architecture Foundation
-1. **Authentication System Design**
-   - Design authentication mechanisms for project requirements
-   - Plan authorization patterns and role-based access control (RBAC)
-   - Design multi-factor authentication if required
-   - Plan session management and token handling strategies
-
-2. **Core Security Architecture**
-   - Design security layers using defense-in-depth approach
-   - Plan API security patterns and endpoint protection
-   - Design input validation and output encoding strategies
-   - Plan secure communication protocols and encryption
-
-### Step 2: Data Protection and Compliance
-3. **Data Protection Strategy**
-   - Identify sensitive data and classification requirements
-   - Plan encryption at rest and in transit
-   - Design data masking, anonymization, and retention strategies
-   - Plan personal data handling for privacy compliance (GDPR, CCPA)
-
-4. **Compliance Requirements**
-   - Identify industry regulatory compliance requirements
-   - Plan security framework alignment (NIST, ISO 27001)
-   - Design audit logging and compliance monitoring
-   - Plan security documentation and evidence collection
-
-### Step 3: Risk Assessment and Mitigation
-5. **Security Risk Analysis**
-   - Assess OWASP Top 10 vulnerabilities and design mitigations
-   - Identify security risks in planned architecture
-   - Assess third-party service and API security risks
-   - Plan secure development and deployment practices
-
-6. **Security Controls Design**
-   - Design security controls and countermeasures
-   - Plan security testing and validation approaches
-   - Design incident response and security monitoring
-   - Plan security training and awareness requirements
-
-### Step 4: Implementation Guidance
-7. **Security Standards**
-   - Define secure coding standards and practices
-   - Plan security review and validation processes
-   - Design security testing strategy (SAST, DAST, penetration testing)
-   - Plan security deployment and operational practices
-
-8. **Architecture Integration**
-   - Integrate security design with overall architecture
-   - Plan security layer integration with system architecture
-   - Design security patterns that align with domain boundaries
-   - Plan security configuration and environment management
+Your workflow:
+1. Assess threat model appropriate to the actual deployment context and problem scope
+2. Identify minimum viable security controls needed for the specific use case
+3. Distinguish between essential security requirements vs comprehensive security architecture  
+4. Default to platform security features and boring technology over custom security infrastructure
+5. Focus security guidance on real threats rather than theoretical comprehensive coverage
 
 ## Deliverables
 
