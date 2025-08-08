@@ -1,39 +1,29 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:superprompt.com)",
-      "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:topmostads.com)",
-      "Bash(gh run view:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(gh run list:*)",
-      "Bash(powershell:*)"
+      "mcp__ruv-swarm",
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(mkdir:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(npx:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet build)",
+      "Bash(del \"src\\Archie.Domain\\Class1.cs\")",
+      "Bash(del \"src\\Archie.Application\\Class1.cs\")",
+      "Bash(del \"src\\Archie.Infrastructure\\Class1.cs\")",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
-  },
-  "mcps": {
-    "context7s": {
-      "command": "context7s",
-      "args": [
-        "--api-key",
-        "${CONTEXT7S_API_KEY}"
-      ],
-      "env": {
-        "CONTEXT7S_API_KEY": "${CONTEXT7S_API_KEY}"
-      }
-    }
-  },
-  "agent_execution_monitoring": {
-    "enabled": true,
-    "validation_gates": true,
-    "tool_usage_tracking": true,
-    "quality_thresholds": {
-      "confidence_gate": 95,
-      "documentation_required": true,
-      "validator_approval_required": true
-    }
   }
 }

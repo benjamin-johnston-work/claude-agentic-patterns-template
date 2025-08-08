@@ -1,0 +1,16 @@
+C:\Dev\Archie\src\Archie.Application\bin\Debug\net9.0\Archie.Application.deps.json
+C:\Dev\Archie\src\Archie.Application\bin\Debug\net9.0\Archie.Application.dll
+C:\Dev\Archie\src\Archie.Application\bin\Debug\net9.0\Archie.Application.pdb
+C:\Dev\Archie\src\Archie.Application\bin\Debug\net9.0\Archie.Domain.dll
+C:\Dev\Archie\src\Archie.Application\bin\Debug\net9.0\Archie.Domain.pdb
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.csproj.AssemblyReference.cache
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.AssemblyInfoInputs.cache
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.AssemblyInfo.cs
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.csproj.CoreCompileInputs.cache
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.sourcelink.json
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.A.60868700.Up2Date
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.dll
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\refint\Archie.Application.dll
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\Archie.Application.pdb
+C:\Dev\Archie\src\Archie.Application\obj\Debug\net9.0\ref\Archie.Application.dll

@@ -1,0 +1,12 @@
+C:\Dev\Archie\src\Archie.Domain\bin\Debug\net9.0\Archie.Domain.deps.json
+C:\Dev\Archie\src\Archie.Domain\bin\Debug\net9.0\Archie.Domain.dll
+C:\Dev\Archie\src\Archie.Domain\bin\Debug\net9.0\Archie.Domain.pdb
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.AssemblyInfoInputs.cache
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.AssemblyInfo.cs
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.csproj.CoreCompileInputs.cache
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.sourcelink.json
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.dll
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\refint\Archie.Domain.dll
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\Archie.Domain.pdb
+C:\Dev\Archie\src\Archie.Domain\obj\Debug\net9.0\ref\Archie.Domain.dll
