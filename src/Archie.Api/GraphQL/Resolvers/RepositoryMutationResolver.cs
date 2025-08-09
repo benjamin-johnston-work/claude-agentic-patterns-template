@@ -1,5 +1,6 @@
 using Archie.Application.DTOs;
 using Archie.Application.UseCases;
+using HotChocolate;
 using HotChocolate.Types;
 
 namespace Archie.Api.GraphQL.Resolvers;
@@ -45,10 +46,4 @@ public class RepositoryMutationResolver
         }
         return result.Value;
     }
-}
-
-public class Mutation
-{
-    // This class serves as a placeholder for the root Mutation type
-    // Individual resolvers extend this using ExtendObjectType
 }
