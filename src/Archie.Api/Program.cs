@@ -33,6 +33,7 @@ builder.Services.AddScoped<IEventPublisher, InMemoryEventPublisher>();
 builder.Services.AddScoped<IDocumentationRepository, AzureSearchDocumentationRepository>();
 builder.Services.AddScoped<IAIDocumentationGeneratorService, AIDocumentationGeneratorService>();
 builder.Services.AddScoped<IRepositoryAnalysisService, RepositoryAnalysisService>();
+builder.Services.AddScoped<ContentSummarizationService>();
 
 // Add Azure Search services
 builder.Services.AddScoped<IAzureSearchService, AzureSearchService>();
@@ -55,14 +56,22 @@ builder.Services.AddScoped<UpdateDocumentationSectionUseCase>();
 builder.Services.AddScoped<SearchDocumentationUseCase>();
 builder.Services.AddScoped<DeleteDocumentationUseCase>();
 
+// Add conversation services and use cases
+builder.Services.AddScoped<IConversationRepository, AzureSearchConversationRepository>();
+builder.Services.AddScoped<IConversationalAIService, ConversationalAIService>();
+builder.Services.AddScoped<IConversationContextService, ConversationContextService>();
+builder.Services.AddScoped<StartConversationUseCase>();
+builder.Services.AddScoped<GetConversationUseCase>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:3002")
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -78,6 +87,7 @@ builder.Services
     .AddType<RepositoryStatisticsType>()
     .AddType<LanguageStatsType>()
     .AddType<AddRepositoryInputType>()
+    .AddType<RepositoryFilterInputType>()
     .AddType<SearchableDocumentType>()
     .AddType<DocumentMetadataType>()
     .AddType<SearchResultType>()
@@ -100,6 +110,20 @@ builder.Services
     .AddType<UpdateDocumentationSectionInputType>()
     .AddType<DocumentationGenerationProgressType>()
     
+    // Add conversation GraphQL types
+    .AddType<ConversationType>()
+    .AddType<ConversationSummaryType>()
+    .AddType<ConversationMessageType>()
+    .AddType<MessageAttachmentType>()
+    .AddType<ConversationContextType>()
+    .AddType<ConversationPreferencesType>()
+    .AddType<ConversationMetadataType>()
+    .AddType<MessageMetadataType>()
+    .AddType<ConversationStatusType>()
+    .AddType<MessageTypeEnum>()
+    .AddType<AttachmentTypeEnum>()
+    .AddType<ResponseStyleEnum>()
+    
     .AddTypeExtension<RepositoryQueryResolver>()
     .AddTypeExtension<RepositoryMutationResolver>()
     .AddTypeExtension<SearchQueryResolver>()
@@ -109,6 +133,9 @@ builder.Services
     // Add documentation GraphQL resolvers
     .AddTypeExtension<DocumentationQueryResolver>()
     .AddTypeExtension<DocumentationMutationResolver>()
+    
+    // Add conversation GraphQL resolvers
+    .AddTypeExtension<ConversationQueryResolver>()
     
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true);
 
@@ -120,8 +147,12 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+// Disable HTTPS redirection in development to avoid CORS issues
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapGraphQL("/graphql");
 
