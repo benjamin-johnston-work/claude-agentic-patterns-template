@@ -78,9 +78,18 @@ az keyvault secret list --vault-name ract-archie-kv-dev
 
 ### Development Workflow
 - `dotnet build` - Build entire solution
-- `dotnet test` - Run all tests
+- `dotnet test` - Run all tests  
 - `dotnet run --project src\Archie.Api` - Start API server
+- `.\scripts\Start-ArchieDevEnvironment.ps1` - Start full development environment
+- `.\scripts\Stop-ArchieDevEnvironment.ps1` - Stop development environment
 - `.\scripts\Test-ArchieEnvironment.ps1` - Environment health check
+
+### Frontend Development
+- `cd src/frontend && npm install` - Install frontend dependencies
+- `npm run dev` - Start Next.js development server (http://localhost:3000)
+- `npm run build` - Build production frontend
+- `npm run test` - Run Jest unit tests
+- `npx playwright test` - Run end-to-end tests
 
 ### Testing & Validation
 - **API Testing**: Use GraphQL playground at `/graphql` when API running
@@ -95,34 +104,58 @@ az keyvault secret list --vault-name ract-archie-kv-dev
 ## Architecture & Tech Stack
 
 ### Primary Technologies
-- **Backend**: .NET 9.0 Web API
-- **Data Storage**: Azure Search
-- **Search Engine**: Azure AI Search
-- **AI**: Azure OpenAI GPT-4.1
-- **Testing**: NUnit 4.1.0, Moq
-- **GraphQL**: HotChocolate
+- **Backend**: .NET 9.0 Web API with GraphQL (HotChocolate)
+- **Frontend**: Next.js 14 with TypeScript, Tailwind CSS, shadcn/ui
+- **Architecture**: Microsoft GraphRAG with Azure AI Search vector indexing
+- **Data Storage**: Azure AI Search with semantic search capabilities
+- **AI Services**: Azure OpenAI GPT-4.1, text-embedding-ada-002
+- **Authentication**: NextAuth.js with Azure AD integration
+- **Testing**: NUnit 4.1.0, Moq, Jest (frontend), Playwright (E2E)
+- **Infrastructure**: Azure Cloud Services (Search, OpenAI, Key Vault)
 
 ### Architecture Pattern
-- **Clean Architecture**: Domain, Application, Infrastructure, API layers
-- **Domain-Driven Design**: Value objects, entities, use cases
-- **Repository Pattern**: Data access abstraction via Azure Search
-- **CQRS**: Command/Query separation for complex operations
+- **Clean Architecture**: Domain, Application, Infrastructure, API layers with strict dependency inversion
+- **Microsoft GraphRAG**: Knowledge graph construction with semantic search and AI-powered insights
+- **Domain-Driven Design**: Rich value objects, aggregates, domain events, and use cases
+- **Repository Pattern**: Data access abstraction via Azure Search with vector embeddings
+- **CQRS**: Command/Query separation with GraphQL mutations/queries
+- **Event-Driven Architecture**: Domain events for cross-cutting concerns
+- **Microservices-Ready**: Structured for future service decomposition
 
 ## Core Features & Implementation Status
 
-### ✅ Completed Features
-- **Feature 01**: Repository Connection & Management
-- **Feature 02**: Azure AI Search Implementation
-- **Feature 03**: Enhanced AI-Powered Documentation Generation
-  - Content-based analysis (not filename-based)
-  - Project purpose extraction from README analysis
-  - Component relationship mapping
-  - Domain-specific documentation generation
+### ✅ Completed Features (F01-F14)
+- **F01: Repository Connection & Management**: GitHub integration, validation, indexing pipeline
+- **F02: Azure AI Search Implementation**: Vector search, semantic indexing, document storage
+- **F03: AI-Powered Documentation Generation**: Content-based analysis, contextual documentation
+- **F04: Conversational Query Interface**: Natural language repository queries with context
+- **F05: Semantic Kernel Code Analysis**: Advanced code understanding and relationship mapping
+- **F06: Event-Driven Architecture**: Domain events, messaging, cross-service communication  
+- **F07: Rate Limiting & API Optimization**: Request throttling, performance monitoring
+- **F08: GitHub Webhooks & Real-time Updates**: Live repository synchronization
+- **F09: Azure DevOps CI/CD Infrastructure**: Automated deployment pipelines
+- **F10: Authentication & Security**: Azure AD integration, role-based access control
+- **F11: Performance Monitoring & Observability**: Application insights, telemetry
+- **F12: GraphRAG Knowledge Construction**: Entity extraction, relationship mapping
+- **F13: GraphRAG Visual Discovery Interface**: Interactive knowledge graph exploration
+- **F14: Enterprise GraphRAG Analytics**: Compliance reporting, usage analytics
   
 ### 🔧 Key Services
-- `ContentSummarizationService`: Analyzes file content for AI context
-- `RepositoryAnalysisService`: Enhanced with content-driven understanding
-- `AIDocumentationGeneratorService`: Generates accurate, context-aware documentation
+- **Core Analysis Services**:
+  - `ContentSummarizationService`: File content analysis for AI context
+  - `RepositoryAnalysisService`: Content-driven repository understanding
+  - `AIDocumentationGeneratorService`: Context-aware documentation generation
+- **Azure Integration Services**:
+  - `AzureSearchService`: Vector search and semantic indexing
+  - `AzureOpenAIEmbeddingService`: Text embedding generation
+  - `CodeSymbolExtractor`: Programming language symbol extraction
+- **Repository Services**:
+  - `GitHubService`: GitHub API integration and webhook handling
+  - `GitRepositoryService`: Git operations and repository management
+  - `RepositoryIndexingService`: Automated repository content indexing
+- **Conversation Services**:
+  - `ConversationalAIService`: Natural language query processing
+  - `ConversationContextService`: Context management for conversations
 
 ## Code Style & Best Practices
 
@@ -131,6 +164,75 @@ az keyvault secret list --vault-name ract-archie-kv-dev
 - **Test-First**: Write tests before implementation using NUnit
 - **Clean Architecture**: Separate concerns
 - **Documentation**: Keep updated
+
+## Git Commit Conventions
+
+**All commits must follow conventional commit format with proper prefixing:**
+
+### Commit Types
+- **Feature**: New feature implementation (`Feature: Add repository indexing pipeline`)
+- **Task**: Development tasks, refactoring, improvements (`Task: Refactor AzureSearchService for better error handling`)
+- **Bug**: Bug fixes (`Bug: Fix null reference in DocumentationGenerator`)  
+- **Hotfix**: Critical production fixes (`Hotfix: Resolve Azure Search connection timeout`)
+- **Security**: Security-related changes (`Security: Remove hardcoded API keys from configuration`)
+- **Docs**: Documentation updates (`Docs: Update API integration guide`)
+- **Test**: Test additions/modifications (`Test: Add unit tests for ConversationService`)
+- **CI/CD**: Build, deployment, pipeline changes (`CI/CD: Update Azure deployment pipeline`)
+
+### Format Examples
+```
+Feature: Implement F05 semantic kernel code analysis foundation
+Task: Optimize Azure Search query performance for large repositories  
+Bug: Fix repository validation failing on private repositories
+Security: Implement local secrets configuration pattern
+```
+
+### Commit Message Structure
+```
+Type: Brief description (50 chars max)
+
+Optional detailed explanation of what and why.
+Include breaking changes, migration notes.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+## Security Practices
+
+### Local Secrets Management
+**NEVER commit secrets to the repository**. Follow this pattern:
+
+1. **Development Environment**:
+   - Real API keys stored in `appsettings.Local.json` (not tracked by git)
+   - Placeholders in `appsettings.Development.json` (tracked by git)
+   - Application configured to load local secrets via `Program.cs`
+
+2. **Required Local Secrets File** (`src/Archie.Api/appsettings.Local.json`):
+```json
+{
+    "GitHub": {
+        "DefaultAccessToken": "your-actual-github-token"
+    },
+    "AzureSearch": {
+        "AdminKey": "your-actual-azure-search-key",
+        "QueryKey": "your-actual-azure-search-query-key"
+    },
+    "AzureOpenAI": {
+        "ApiKey": "your-actual-azure-openai-key"
+    }
+}
+```
+
+3. **Production Deployment**: 
+   - Use Azure Key Vault for secret storage
+   - Environment variables for CI/CD pipelines
+   - Managed identities where possible
+
+4. **Git History Safety**:
+   - `.gitignore` excludes `appsettings.Local.json`
+   - Git history cleaned of any committed secrets
+   - GitHub secret scanning protection enabled
 
 ## Testing Framework
 
@@ -181,9 +283,12 @@ Before submitting any code changes:
 - Domain value objects: `ProjectPurpose`, `ComponentRelationshipMap`, `ContentSummary`
 
 ### Configuration Safety
-- Never hardcode Azure OpenAI endpoints or API keys
-- Maintain Azure subscription details accuracy
-- Keep environment-specific settings in appsettings files
+- **NEVER hardcode secrets**: Use `appsettings.Local.json` pattern for development
+- **Azure Key Vault**: Production secrets stored securely in Azure Key Vault
+- **Environment Variables**: CI/CD pipelines use environment-based configuration
+- **Managed Identities**: Prefer Azure managed identities over API keys where possible
+- **Git History**: All secrets removed from git history using filter-branch
+- **Subscription Details**: Maintain Azure subscription accuracy for resource access
 
 ## Important Instructions
 - Do what has been asked; nothing more, nothing less
@@ -191,5 +296,8 @@ Before submitting any code changes:
 - ALWAYS prefer editing an existing file to creating a new one
 - NEVER proactively create documentation files (*.md) or README files
 - Never save working files, text/mds and tests to the root folder
-- Always test with Test-ArchieEnvironment.ps1 before saying a feature is complete.
+- Always test with Test-ArchieEnvironment.ps1 before saying a feature is complete
 - You always need to use scripts to start and stop application from the scripts folder. You should always use the stop script before the start
+- **Follow git commit conventions**: Use proper prefixes (Feature/Task/Bug/Hotfix/Security/etc.)
+- **Never commit secrets**: Always use `appsettings.Local.json` pattern for development keys
+- **Frontend development**: Run `npm run dev` for Next.js, ensure both API and frontend are running for full functionality
