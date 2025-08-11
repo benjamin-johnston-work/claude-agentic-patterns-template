@@ -71,6 +71,20 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
             // Perform repository analysis
             var analysisContext = await _repositoryAnalysisService.AnalyzeRepositoryAsync(repositoryId, cancellationToken);
             
+            // Validate repository analysis results to prevent AI hallucination
+            if (analysisContext.ImportantFiles == null || !analysisContext.ImportantFiles.Any())
+            {
+                var errorMessage = analysisContext.Structure.ProjectType.Contains("Empty") 
+                    ? "Repository appears to be empty or inaccessible. Cannot generate meaningful documentation without repository content."
+                    : "Repository analysis returned no files. This may indicate API issues or access problems.";
+                
+                _logger.LogError("Cannot generate documentation for repository {RepositoryId}: {Error}", repositoryId, errorMessage);
+                throw new InvalidOperationException($"Documentation generation failed for repository {repositoryId}: {errorMessage}");
+            }
+            
+            _logger.LogInformation("Repository analysis completed for {RepositoryId}: Found {FileCount} important files, {DependencyCount} dependencies", 
+                repositoryId, analysisContext.ImportantFiles.Count, analysisContext.Dependencies.Count);
+            
             // Create documentation metadata
             var metadata = new DocumentationMetadata(
                 repository.Name,
@@ -95,9 +109,12 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
 
             // Create documentation entity
             var documentation = Documentation.Create(repositoryId, $"{repository.Name} Documentation", metadata);
-            documentation.UpdateStatus(DocumentationStatus.GeneratingContent);
+            documentation.UpdateStatus(DocumentationStatus.Analyzing);
 
             var startTime = DateTime.UtcNow;
+
+            // Transition to content generation phase
+            documentation.UpdateStatus(DocumentationStatus.GeneratingContent);
 
             // Generate sections concurrently with rate limiting
             var sectionTasks = options.RequestedSections.Select(async sectionType =>
@@ -146,6 +163,10 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
 
             // Update documentation with final statistics
             typeof(Documentation).GetProperty(nameof(Documentation.Statistics))?.SetValue(documentation, statistics);
+
+            // Transition through enriching and indexing phases
+            documentation.UpdateStatus(DocumentationStatus.Enriching);
+            documentation.UpdateStatus(DocumentationStatus.Indexing);
 
             _logger.LogInformation("Successfully generated documentation for repository: {RepositoryId} with {SectionCount} sections in {GenerationTime}ms", 
                 repositoryId, sections.Length, generationTime.TotalMilliseconds);
@@ -422,67 +443,219 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
                 return content;
             }
 
-            throw new InvalidOperationException("No content returned from Azure OpenAI");
+            // Handle case where retry mechanism exhausted all attempts
+            _logger.LogError("Azure OpenAI service failed to return content after {RetryAttempts} attempts", _options.RetryAttempts);
+            throw new InvalidOperationException($"Azure OpenAI service is currently unavailable. Please try again later. (Failed after {_options.RetryAttempts} retry attempts)");
+        }
+        catch (RequestFailedException ex) when (!IsRetryableError(ex))
+        {
+            // Handle non-retryable errors (4xx client errors)
+            _logger.LogError(ex, "Azure OpenAI request failed with non-retryable error: {ErrorCode}", ex.ErrorCode);
+            throw new InvalidOperationException($"Azure OpenAI request failed: {ex.Message} (Error Code: {ex.ErrorCode})");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Azure OpenAI request was cancelled");
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating content with Azure OpenAI");
-            throw;
+            _logger.LogError(ex, "Unexpected error generating content with Azure OpenAI");
+            throw new InvalidOperationException("An unexpected error occurred while generating documentation. Please try again.", ex);
         }
     }
 
     private string BuildSectionPrompt(RepositoryAnalysisContext context, DocumentationSectionType sectionType, string? customInstructions)
     {
-        var basePrompt = new StringBuilder();
+        try
+        {
+            // Input validation
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context), "Repository analysis context cannot be null");
+            }
+
+            if (string.IsNullOrWhiteSpace(context.RepositoryName))
+            {
+                _logger.LogWarning("Repository name is missing in context");
+            }
+
+            var basePrompt = new StringBuilder();
         
         basePrompt.AppendLine($"Generate comprehensive {sectionType} documentation for the following repository:");
         basePrompt.AppendLine();
-        basePrompt.AppendLine($"**Repository Information:**");
-        basePrompt.AppendLine($"- Name: {context.RepositoryName}");
-        basePrompt.AppendLine($"- Primary Language: {context.PrimaryLanguage}");
-        basePrompt.AppendLine($"- Project Type: {context.Structure.ProjectType}");
-        basePrompt.AppendLine($"- Frameworks: {string.Join(", ", context.Structure.Frameworks.Take(5))}");
-        basePrompt.AppendLine($"- Key Dependencies: {string.Join(", ", context.Dependencies.Take(10).Select(d => d.Name))}");
-        
-        if (context.ImportantFiles.Any())
+
+        // ENHANCED: Project Purpose (from content analysis)
+        if (context.Purpose != null && !context.Purpose.IsEmpty)
         {
-            basePrompt.AppendLine();
-            basePrompt.AppendLine("**Key Files:**");
-            foreach (var file in context.ImportantFiles.Take(5))
+            basePrompt.AppendLine("**Project Purpose:**");
+            
+            if (!string.IsNullOrWhiteSpace(context.Purpose.Description))
             {
-                basePrompt.AppendLine($"- {file.FilePath}: {file.Purpose}");
+                basePrompt.AppendLine($"- Description: {context.Purpose.Description}");
+            }
+            
+            if (!string.IsNullOrWhiteSpace(context.Purpose.BusinessDomain))
+            {
+                basePrompt.AppendLine($"- Business Domain: {context.Purpose.BusinessDomain}");
+            }
+            
+            if (!string.IsNullOrWhiteSpace(context.Purpose.UserValue))
+            {
+                basePrompt.AppendLine($"- User Value: {context.Purpose.UserValue}");
+            }
+            
+            if (context.Purpose.KeyFeatures?.Any() == true)
+            {
+                basePrompt.AppendLine($"- Key Features: {string.Join(", ", context.Purpose.KeyFeatures.Take(5))}");
+            }
+
+            if (context.Purpose.TechnicalHighlights?.Any() == true)
+            {
+                basePrompt.AppendLine("- Technical Highlights:");
+                foreach (var highlight in context.Purpose.TechnicalHighlights.Take(3))
+                {
+                    if (!string.IsNullOrWhiteSpace(highlight.Key) && !string.IsNullOrWhiteSpace(highlight.Value))
+                    {
+                        basePrompt.AppendLine($"  - {highlight.Key}: {highlight.Value}");
+                    }
+                }
+            }
+            basePrompt.AppendLine();
+        }
+
+        // Enhanced Repository Information
+        basePrompt.AppendLine($"**Repository Information:**");
+        basePrompt.AppendLine($"- Name: {context.RepositoryName ?? "Unknown"}");
+        basePrompt.AppendLine($"- Primary Language: {context.PrimaryLanguage ?? "Unknown"}");
+        
+        if (context.Structure != null && !string.IsNullOrWhiteSpace(context.Structure.ProjectType))
+        {
+            basePrompt.AppendLine($"- Project Type: {context.Structure.ProjectType}");
+        }
+        
+        if (context.Structure?.Frameworks?.Any() == true)
+        {
+            basePrompt.AppendLine($"- Frameworks: {string.Join(", ", context.Structure.Frameworks.Take(5))}");
+        }
+        
+        if (context.Dependencies?.Any() == true)
+        {
+            var dependencyNames = context.Dependencies.Take(5)
+                .Where(d => !string.IsNullOrWhiteSpace(d?.Name))
+                .Select(d => d.Name);
+            if (dependencyNames.Any())
+            {
+                basePrompt.AppendLine($"- Key Dependencies: {string.Join(", ", dependencyNames)}");
+            }
+        }
+        basePrompt.AppendLine();
+
+        // ENHANCED: How It Works (from component analysis)
+        if (context.ComponentMap != null && context.ComponentMap.HasArchitecture)
+        {
+            basePrompt.AppendLine("**How This Project Works:**");
+            
+            if (context.ComponentMap.EntryPoints?.Any() == true)
+            {
+                basePrompt.AppendLine($"- Entry Points: {string.Join(", ", context.ComponentMap.EntryPoints.Take(3))}");
+            }
+            
+            if (context.ComponentMap.ComponentPurposes?.Any() == true)
+            {
+                basePrompt.AppendLine("- Key Components:");
+                foreach (var component in context.ComponentMap.ComponentPurposes.Take(5))
+                {
+                    if (!string.IsNullOrWhiteSpace(component.Key) && !string.IsNullOrWhiteSpace(component.Value))
+                    {
+                        basePrompt.AppendLine($"  - {component.Key}: {component.Value}");
+                    }
+                }
+            }
+            basePrompt.AppendLine();
+        }
+
+        // ENHANCED: Actual Code Examples (showing functionality)
+        if (context.ContentSummaries?.Any() == true)
+        {
+            basePrompt.AppendLine("**Code Examples (from actual repository):**");
+            foreach (var summary in context.ContentSummaries.Take(3))
+            {
+                if (summary != null && !string.IsNullOrWhiteSpace(summary.CodeSnippet))
+                {
+                    var language = !string.IsNullOrWhiteSpace(summary.Language) ? summary.Language : "text";
+                    var description = !string.IsNullOrWhiteSpace(summary.FunctionalityDescription) 
+                        ? summary.FunctionalityDescription 
+                        : "Code functionality";
+                    
+                    basePrompt.AppendLine($"```{language}");
+                    basePrompt.AppendLine($"// {description}");
+                    basePrompt.AppendLine(summary.CodeSnippet);
+                    basePrompt.AppendLine("```");
+                    basePrompt.AppendLine();
+                }
             }
         }
 
-        if (context.Patterns.ArchitecturalStyles.Any())
+        // Context-aware section requirements
+        basePrompt.AppendLine($"**Section Requirements for {sectionType}:**");
+        basePrompt.AppendLine(GetContextAwareRequirements(context, sectionType));
+        basePrompt.AppendLine();
+
+        // Domain-specific instructions
+        var businessDomain = context.Purpose?.BusinessDomain ?? "Software";
+        var domainInstructions = GetDomainSpecificInstructions(businessDomain, sectionType);
+        if (!string.IsNullOrWhiteSpace(domainInstructions))
         {
+            basePrompt.AppendLine("**Domain-Specific Focus:**");
+            basePrompt.AppendLine(domainInstructions);
             basePrompt.AppendLine();
-            basePrompt.AppendLine($"**Architectural Patterns:** {string.Join(", ", context.Patterns.ArchitecturalStyles)}");
         }
 
-        basePrompt.AppendLine();
-        basePrompt.AppendLine($"**Section Requirements for {sectionType}:**");
-        basePrompt.AppendLine(GetSectionRequirements(sectionType));
-
         // Add language-specific instructions
-        if (_options.LanguageSpecificPrompts.TryGetValue(context.PrimaryLanguage.ToLowerInvariant(), out var languagePrompt))
+        var primaryLanguage = context.PrimaryLanguage?.ToLowerInvariant() ?? "unknown";
+        if (_options.LanguageSpecificPrompts?.TryGetValue(primaryLanguage, out var languagePrompt) == true 
+            && !string.IsNullOrWhiteSpace(languagePrompt))
         {
-            basePrompt.AppendLine();
             basePrompt.AppendLine($"**Language-Specific Focus:**");
             basePrompt.AppendLine(languagePrompt);
+            basePrompt.AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(customInstructions))
         {
-            basePrompt.AppendLine();
             basePrompt.AppendLine("**Additional Instructions:**");
             basePrompt.AppendLine(customInstructions);
+            basePrompt.AppendLine();
         }
 
+        // Final instructions emphasizing accuracy based on actual content
+        basePrompt.AppendLine("**IMPORTANT:** Generate documentation based on the ACTUAL project purpose and functionality described above.");
+        basePrompt.AppendLine("Do not make assumptions or add features that are not evidenced by the code analysis.");
+        
+        var domainType = context.Purpose?.BusinessDomain?.ToLowerInvariant() ?? "software";
+        basePrompt.AppendLine($"Focus on what this {domainType} project actually does for users.");
         basePrompt.AppendLine();
         basePrompt.AppendLine($"Please generate detailed, professional documentation that is {_options.MinContentLength}-{_options.MaxContentLength} characters long. Use markdown formatting and include practical examples where relevant.");
 
-        return basePrompt.ToString();
+            return basePrompt.ToString();
+        }
+        catch (ArgumentNullException)
+        {
+            throw; // Re-throw argument null exceptions
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building section prompt for {SectionType}", sectionType);
+            
+            // Return a basic prompt as fallback
+            var fallbackPrompt = $"Generate comprehensive {sectionType} documentation for the repository '{context?.RepositoryName ?? "Unknown"}'.";
+            if (!string.IsNullOrWhiteSpace(customInstructions))
+            {
+                fallbackPrompt += $"\n\nAdditional instructions: {customInstructions}";
+            }
+            return fallbackPrompt;
+        }
     }
 
     private string GetSectionRequirements(DocumentationSectionType sectionType)
@@ -749,6 +922,125 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
         if (code.Contains("struct ")) return "Struct";
         
         return "CodeBlock";
+    }
+
+    #endregion
+
+    #region Enhanced Prompt Building Methods
+
+    /// <summary>
+    /// Get context-aware section requirements based on project purpose
+    /// </summary>
+    private string GetContextAwareRequirements(RepositoryAnalysisContext context, DocumentationSectionType sectionType)
+    {
+        var baseRequirement = GetSectionRequirements(sectionType);
+        var businessDomain = context.Purpose.BusinessDomain.ToLowerInvariant();
+
+        // Enhance requirements based on actual project type
+        var enhancement = businessDomain switch
+        {
+            "game" when sectionType == DocumentationSectionType.Overview => 
+                " Focus on gameplay mechanics, controls, and what makes this game unique.",
+            "game" when sectionType == DocumentationSectionType.Usage => 
+                " Explain how to play, control schemes, game objectives, and scoring system.",
+            "web api" when sectionType == DocumentationSectionType.Overview => 
+                " Focus on what endpoints are available and what data the API provides.",
+            "web api" when sectionType == DocumentationSectionType.Usage => 
+                " Include API endpoint examples, request/response formats, and authentication.",
+            "library" when sectionType == DocumentationSectionType.Overview => 
+                " Focus on what problems this library solves and what functionality it provides.",
+            "library" when sectionType == DocumentationSectionType.Usage => 
+                " Include import/installation instructions and common usage patterns.",
+            _ => ""
+        };
+
+        return baseRequirement + enhancement;
+    }
+
+    /// <summary>
+    /// Get domain-specific instructions for documentation generation
+    /// </summary>
+    private string GetDomainSpecificInstructions(string businessDomain, DocumentationSectionType sectionType)
+    {
+        return businessDomain.ToLowerInvariant() switch
+        {
+            "game" => GetGameDocumentationInstructions(sectionType),
+            "web api" => GetWebApiDocumentationInstructions(sectionType),
+            "library" => GetLibraryDocumentationInstructions(sectionType),
+            "web application" => GetWebAppDocumentationInstructions(sectionType),
+            "cli tool" => GetCliToolDocumentationInstructions(sectionType),
+            _ => ""
+        };
+    }
+
+    private string GetGameDocumentationInstructions(DocumentationSectionType sectionType)
+    {
+        return sectionType switch
+        {
+            DocumentationSectionType.Overview => 
+                "Explain the game genre, objective, key mechanics, and what makes it enjoyable to play. Mention any special features like AI difficulty adjustment or power-ups.",
+            DocumentationSectionType.Usage => 
+                "Detail how to start playing, control schemes, game rules, scoring system, and any special gameplay features. Include what keys/controls to use.",
+            DocumentationSectionType.GettingStarted => 
+                "Explain how to open/run the game, what browser requirements exist, and how to start playing immediately.",
+            _ => "Focus on the interactive and entertainment aspects of this game application."
+        };
+    }
+
+    private string GetWebApiDocumentationInstructions(DocumentationSectionType sectionType)
+    {
+        return sectionType switch
+        {
+            DocumentationSectionType.Overview => 
+                "Explain what data or services this API provides, who would use it, and what business problems it solves.",
+            DocumentationSectionType.Usage => 
+                "Include example API calls, request/response formats, authentication methods, and common use cases.",
+            DocumentationSectionType.GettingStarted => 
+                "Explain how to access the API, get API keys if needed, and make the first successful request.",
+            _ => "Focus on the data services and endpoints provided by this API."
+        };
+    }
+
+    private string GetLibraryDocumentationInstructions(DocumentationSectionType sectionType)
+    {
+        return sectionType switch
+        {
+            DocumentationSectionType.Overview => 
+                "Explain what problems this library solves, what functionality it provides, and who would benefit from using it.",
+            DocumentationSectionType.Usage => 
+                "Include installation instructions, import statements, and common usage patterns with code examples.",
+            DocumentationSectionType.GettingStarted => 
+                "Show how to install the library and write a simple 'Hello World' example using its main features.",
+            _ => "Focus on the reusable functionality and developer benefits of this library."
+        };
+    }
+
+    private string GetWebAppDocumentationInstructions(DocumentationSectionType sectionType)
+    {
+        return sectionType switch
+        {
+            DocumentationSectionType.Overview => 
+                "Explain what tasks users can accomplish with this web application and what makes it useful or unique.",
+            DocumentationSectionType.Usage => 
+                "Detail the main features, user workflows, and how to accomplish common tasks within the application.",
+            DocumentationSectionType.GettingStarted => 
+                "Explain how to access the application, create an account if needed, and complete initial setup.",
+            _ => "Focus on user tasks and workflows within this web application."
+        };
+    }
+
+    private string GetCliToolDocumentationInstructions(DocumentationSectionType sectionType)
+    {
+        return sectionType switch
+        {
+            DocumentationSectionType.Overview => 
+                "Explain what command-line tasks this tool helps with and what problems it solves for users.",
+            DocumentationSectionType.Usage => 
+                "Include command syntax, common flags/options, and examples of typical workflows.",
+            DocumentationSectionType.GettingStarted => 
+                "Show installation steps and a simple example command to demonstrate basic functionality.",
+            _ => "Focus on command-line workflows and automation provided by this tool."
+        };
     }
 
     #endregion

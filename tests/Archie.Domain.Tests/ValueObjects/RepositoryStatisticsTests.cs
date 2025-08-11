@@ -2,9 +2,10 @@ using Archie.Domain.ValueObjects;
 
 namespace Archie.Domain.Tests.ValueObjects;
 
+[TestFixture]
 public class RepositoryStatisticsTests
 {
-    [Fact]
+    [Test]
     public void Constructor_ValidInputs_CreatesRepositoryStatistics()
     {
         // Arrange
@@ -20,12 +21,12 @@ public class RepositoryStatisticsTests
         var statistics = new RepositoryStatistics(fileCount, lineCount, languageBreakdown);
 
         // Assert
-        Assert.Equal(fileCount, statistics.FileCount);
-        Assert.Equal(lineCount, statistics.LineCount);
-        Assert.Equal(languageBreakdown, statistics.LanguageBreakdown);
+        Assert.That(statistics.FileCount, Is.EqualTo(fileCount));
+        Assert.That(statistics.LineCount, Is.EqualTo(lineCount));
+        Assert.That(statistics.LanguageBreakdown, Is.EqualTo(languageBreakdown));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NegativeFileCount_ThrowsArgumentException()
     {
         // Arrange
@@ -36,7 +37,7 @@ public class RepositoryStatisticsTests
         Assert.Throws<ArgumentException>(() => new RepositoryStatistics(-1, lineCount, languageBreakdown));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NegativeLineCount_ThrowsArgumentException()
     {
         // Arrange
@@ -47,33 +48,34 @@ public class RepositoryStatisticsTests
         Assert.Throws<ArgumentException>(() => new RepositoryStatistics(fileCount, -1, languageBreakdown));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NullLanguageBreakdown_CreatesEmptyBreakdown()
     {
         // Act
         var statistics = new RepositoryStatistics(100, 5000, null!);
 
         // Assert
-        Assert.NotNull(statistics.LanguageBreakdown);
-        Assert.Empty(statistics.LanguageBreakdown);
+        Assert.That(statistics.LanguageBreakdown, Is.Not.Null);
+        Assert.That(statistics.LanguageBreakdown, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void Empty_ReturnsEmptyStatistics()
     {
         // Act
         var statistics = RepositoryStatistics.Empty;
 
         // Assert
-        Assert.Equal(0, statistics.FileCount);
-        Assert.Equal(0, statistics.LineCount);
-        Assert.Empty(statistics.LanguageBreakdown);
+        Assert.That(statistics.FileCount, Is.EqualTo(0));
+        Assert.That(statistics.LineCount, Is.EqualTo(0));
+        Assert.That(statistics.LanguageBreakdown, Is.Empty);
     }
 }
 
+[TestFixture]
 public class LanguageStatsTests
 {
-    [Fact]
+    [Test]
     public void Constructor_ValidInputs_CreatesLanguageStats()
     {
         // Arrange
@@ -86,39 +88,37 @@ public class LanguageStatsTests
         var stats = new LanguageStats(language, fileCount, lineCount, percentage);
 
         // Assert
-        Assert.Equal(language, stats.Language);
-        Assert.Equal(fileCount, stats.FileCount);
-        Assert.Equal(lineCount, stats.LineCount);
-        Assert.Equal(percentage, stats.Percentage);
+        Assert.That(stats.Language, Is.EqualTo(language));
+        Assert.That(stats.FileCount, Is.EqualTo(fileCount));
+        Assert.That(stats.LineCount, Is.EqualTo(lineCount));
+        Assert.That(stats.Percentage, Is.EqualTo(percentage));
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData(null)]
+    [TestCase("")]
+    [TestCase(" ")]
+    [TestCase(null)]
     public void Constructor_InvalidLanguage_ThrowsArgumentException(string invalidLanguage)
     {
         // Act & Assert
         Assert.Throws<ArgumentException>(() => new LanguageStats(invalidLanguage, 10, 100, 50.0));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NegativeFileCount_ThrowsArgumentException()
     {
         // Act & Assert
         Assert.Throws<ArgumentException>(() => new LanguageStats("C#", -1, 100, 50.0));
     }
 
-    [Fact]
+    [Test]
     public void Constructor_NegativeLineCount_ThrowsArgumentException()
     {
         // Act & Assert
         Assert.Throws<ArgumentException>(() => new LanguageStats("C#", 10, -1, 50.0));
     }
 
-    [Theory]
-    [InlineData(-1.0)]
-    [InlineData(101.0)]
+    [TestCase(-1.0)]
+    [TestCase(101.0)]
     public void Constructor_InvalidPercentage_ThrowsArgumentException(double invalidPercentage)
     {
         // Act & Assert

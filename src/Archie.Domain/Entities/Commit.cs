@@ -22,9 +22,6 @@ public class Commit : BaseEntity
         if (string.IsNullOrWhiteSpace(hash))
             throw new ArgumentException("Hash cannot be null or empty", nameof(hash));
         
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentException("Message cannot be null or empty", nameof(message));
-        
         if (string.IsNullOrWhiteSpace(author))
             throw new ArgumentException("Author cannot be null or empty", nameof(author));
         
@@ -32,7 +29,7 @@ public class Commit : BaseEntity
             throw new ArgumentException("Repository ID cannot be empty", nameof(repositoryId));
 
         Hash = hash;
-        Message = message;
+        Message = string.IsNullOrWhiteSpace(message) ? "No commit message" : message;
         Author = author;
         Timestamp = timestamp;
         RepositoryId = repositoryId;
@@ -40,13 +37,10 @@ public class Commit : BaseEntity
 
     public void Update(string message, string author, DateTime timestamp)
     {
-        if (string.IsNullOrWhiteSpace(message))
-            throw new ArgumentException("Message cannot be null or empty", nameof(message));
-        
         if (string.IsNullOrWhiteSpace(author))
             throw new ArgumentException("Author cannot be null or empty", nameof(author));
 
-        Message = message;
+        Message = string.IsNullOrWhiteSpace(message) ? "No commit message" : message;
         Author = author;
         Timestamp = timestamp;
     }

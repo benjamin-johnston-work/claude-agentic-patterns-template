@@ -48,8 +48,8 @@ public class RefreshRepositoryUseCase
             await _eventPublisher.PublishAsync(analysisStartedEvent, cancellationToken);
 
             // Get updated repository information (this would typically be done asynchronously)
-            var branches = await _gitService.GetBranchesAsync(repository.Url, cancellationToken);
-            var statistics = await _gitService.AnalyzeRepositoryStructureAsync(repository.Url, cancellationToken);
+            var branches = await _gitService.GetBranchesAsync(repository.Url, null, cancellationToken);
+            var statistics = await _gitService.AnalyzeRepositoryStructureAsync(repository.Url, "main", null, cancellationToken);
 
             // Update repository with new information
             repository.UpdateStatistics(statistics);

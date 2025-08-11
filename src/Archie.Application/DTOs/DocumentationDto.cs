@@ -15,6 +15,11 @@ public class DocumentationDto
     public string Version { get; set; } = string.Empty;
     public DocumentationStatisticsDto Statistics { get; set; } = new();
     public string? ErrorMessage { get; set; }
+    public int TotalSections { get; set; }
+    public double EstimatedReadingTime { get; set; } // in minutes
+    public DateTime? LastGenerated { get; set; }
+    public double GenerationDuration { get; set; } // in seconds
+    public int SectionsGenerated { get; set; }
 }
 
 public class DocumentationSectionDto
@@ -39,6 +44,7 @@ public class DocumentationMetadataDto
     public List<string> Dependencies { get; set; } = new();
     public string ProjectType { get; set; } = string.Empty;
     public Dictionary<string, object> CustomProperties { get; set; } = new();
+    public int TotalWords { get; set; }
 }
 
 public class DocumentationStatisticsDto
@@ -70,6 +76,9 @@ public class SectionMetadataDto
     public int TokenCount { get; set; }
     public double? ConfidenceScore { get; set; }
     public Dictionary<string, object> AdditionalProperties { get; set; } = new();
+    public int WordCount { get; set; }
+    public double ReadingTime { get; set; } // in minutes
+    public DateTime? LastModified { get; set; }
 }
 
 public class GenerateDocumentationInput

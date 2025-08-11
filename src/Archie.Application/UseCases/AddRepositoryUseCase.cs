@@ -41,26 +41,55 @@ public class AddRepositoryUseCase
             }
 
             // Validate repository access
-            var isValidAccess = await _gitService.ValidateRepositoryAccessAsync(input.Url, input.AccessToken, cancellationToken);
-            if (!isValidAccess)
+            _logger.LogInformation("Step 1: About to validate repository access");
+            try 
             {
-                _logger.LogWarning("Invalid repository access: {Url}", input.Url);
-                return Result<RepositoryDto>.Failure("Repository is not accessible or does not exist");
+                var isValidAccess = await _gitService.ValidateRepositoryAccessAsync(input.Url, input.AccessToken, cancellationToken);
+                _logger.LogInformation("Step 1 completed: Repository access validation result: {IsValid}", isValidAccess);
+                if (!isValidAccess)
+                {
+                    _logger.LogWarning("Invalid repository access: {Url}", input.Url);
+                    return Result<RepositoryDto>.Failure("Repository is not accessible or does not exist");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Step 1 failed: GitHub repository validation error");
+                return Result<RepositoryDto>.Failure($"STEP 1 FAILED - GitHub validation error: {ex.Message}");
             }
 
-            // Clone repository to get metadata
-            var clonedRepository = await _gitService.CloneRepositoryAsync(input.Url, input.AccessToken, cancellationToken);
+            // Connect to repository to get metadata
+            _logger.LogInformation("Step 2: About to connect to repository");
+            Repository clonedRepository;
+            try 
+            {
+                clonedRepository = await _gitService.ConnectRepositoryAsync(input.Url, input.AccessToken, cancellationToken);
+                _logger.LogInformation("Step 2 completed: Repository connection successful");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Step 2 failed: GitHub repository connection error");
+                return Result<RepositoryDto>.Failure($"STEP 2 FAILED - GitHub connection error: {ex.Message}");
+            }
             
-            // Create and save repository
-            var repository = new Repository(
-                clonedRepository.Name,
-                input.Url,
-                clonedRepository.Language,
-                clonedRepository.Description);
+            // The GitRepositoryService.ConnectRepositoryAsync already creates a properly constructed Repository
+            // with all GitHub API information, so we can use it directly
+            var repository = clonedRepository;
 
             repository.UpdateStatus(Domain.ValueObjects.RepositoryStatus.Connected);
 
-            var savedRepository = await _repositoryRepository.AddAsync(repository, cancellationToken);
+            _logger.LogInformation("Step 3: About to save repository to storage");
+            Repository savedRepository;
+            try 
+            {
+                savedRepository = await _repositoryRepository.AddAsync(repository, cancellationToken);
+                _logger.LogInformation("Step 3 completed: Repository saved to storage successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Step 3 failed: Repository save error");
+                return Result<RepositoryDto>.Failure($"STEP 3 FAILED - Repository save error: {ex.Message}");
+            }
 
             // Publish domain event
             var repositoryAddedEvent = new RepositoryAddedEvent(savedRepository.Id, savedRepository.Url);

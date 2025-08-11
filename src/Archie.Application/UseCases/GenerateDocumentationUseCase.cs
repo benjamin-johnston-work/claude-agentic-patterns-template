@@ -100,14 +100,14 @@ public class GenerateDocumentationUseCase
             var startedEvent = new DocumentationGenerationStartedEvent(
                 documentation.Id,
                 input.RepositoryId,
-                input.Sections.Select(s => s.ToString()).ToList()
+                input.Sections?.Select(s => s.ToString()).ToList() ?? new List<string>()
             );
             await _eventPublisher.PublishAsync(startedEvent, cancellationToken);
 
             // Create documentation generation options
             var options = new DocumentationGenerationOptions
             {
-                RequestedSections = input.Sections.Any() ? input.Sections : 
+                RequestedSections = input.Sections?.Any() == true ? input.Sections : 
                     DocumentationGenerationOptions.GetDefaultSections(metadata.ProjectType, metadata.PrimaryLanguage),
                 IncludeCodeExamples = input.IncludeCodeExamples,
                 IncludeApiReference = input.IncludeApiReference,
@@ -127,18 +127,13 @@ public class GenerateDocumentationUseCase
 
             var generationTime = DateTime.UtcNow - startTime;
             
-            // Update the documentation with generated content
-            foreach (var section in generatedDocumentation.Sections)
-            {
-                documentation.AddSection(section);
-            }
-
+            // Use the generated documentation (which has proper state transitions)
             // Update statistics with generation time
-            var updatedStats = documentation.Statistics.WithUpdatedGenerationTime(generationTime);
-            typeof(Documentation).GetProperty(nameof(Documentation.Statistics))?.SetValue(documentation, updatedStats);
+            var updatedStats = generatedDocumentation.Statistics.WithUpdatedGenerationTime(generationTime);
+            typeof(Documentation).GetProperty(nameof(Documentation.Statistics))?.SetValue(generatedDocumentation, updatedStats);
 
-            documentation.MarkAsCompleted();
-            documentation = await _documentationRepository.UpdateAsync(documentation, cancellationToken);
+            generatedDocumentation.MarkAsCompleted();
+            documentation = await _documentationRepository.UpdateAsync(generatedDocumentation, cancellationToken);
 
             // Publish generation completed event
             var completedEvent = new DocumentationGenerationCompletedEvent(

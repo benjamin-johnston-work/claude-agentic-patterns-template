@@ -1,0 +1,20 @@
+{
+    "Api":  {
+                "ProcessId":  4960,
+                "ProjectPath":  "C:\\Dev\\Archie\\scripts\\..\\src\\Archie.Api",
+                "StartTime":  {
+                                  "value":  "\/Date(1754875956410)\/",
+                                  "DisplayHint":  2,
+                                  "DateTime":  "Monday, August 11, 2025 11:32:36 AM"
+                              }
+            },
+    "Frontend":  {
+                     "ProcessId":  7852,
+                     "ProjectPath":  "C:\\Dev\\Archie\\scripts\\..\\src\\frontend",
+                     "StartTime":  {
+                                       "value":  "\/Date(1754875977543)\/",
+                                       "DisplayHint":  2,
+                                       "DateTime":  "Monday, August 11, 2025 11:32:57 AM"
+                                   }
+                 }
+}

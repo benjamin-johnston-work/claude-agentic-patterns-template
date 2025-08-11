@@ -1,10 +1,11 @@
-﻿namespace Archie.Api.Tests;
+namespace Archie.Api.Tests;
 
+[TestFixture]
 public class UnitTest1
 {
-    [Fact]
+    [Test]
     public void Test1()
     {
-
+        Assert.Pass();
     }
 }

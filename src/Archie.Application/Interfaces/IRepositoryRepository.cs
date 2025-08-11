@@ -20,6 +20,7 @@ public record RepositoryFilter
     public string? Language { get; init; }
     public string? Status { get; init; }
     public string? SearchTerm { get; init; }
+    public bool? HasDocumentation { get; init; }
     public int? Skip { get; init; }
     public int? Take { get; init; }
 }

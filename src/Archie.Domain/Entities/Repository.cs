@@ -9,10 +9,20 @@ public class Repository : BaseEntity, IAggregateRoot
 
     public string Name { get; private set; }
     public string Url { get; private set; }
+    public string Owner { get; private set; } = string.Empty; // NEW: GitHub owner/org
+    public string FullName { get; private set; } = string.Empty; // NEW: owner/repo format
+    public string CloneUrl { get; private set; } = string.Empty; // NEW: for cloning
     public string Language { get; private set; }
     public string? Description { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+    public DateTime? LastPushedAt { get; private set; } // NEW
+    
+    // Repository Metadata
+    public bool IsPrivate { get; private set; } // NEW
+    public bool IsFork { get; private set; } // NEW
+    public bool IsArchived { get; private set; } // NEW
+    public string DefaultBranch { get; private set; } = "main"; // NEW
     public RepositoryStatus Status { get; private set; }
     public IReadOnlyList<Branch> Branches => _branches.AsReadOnly();
     public RepositoryStatistics Statistics { get; private set; }
@@ -21,17 +31,23 @@ public class Repository : BaseEntity, IAggregateRoot
     {
         Name = string.Empty;
         Url = string.Empty;
+        Owner = string.Empty;
+        FullName = string.Empty;
+        CloneUrl = string.Empty;
         Language = string.Empty;
         Statistics = RepositoryStatistics.Empty;
     }
 
-    public Repository(string name, string url, string language, string? description = null)
+    public Repository(string name, string url, string owner, string language, string? description = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Repository name cannot be null or empty", nameof(name));
         
         if (string.IsNullOrWhiteSpace(url))
             throw new ArgumentException("Repository URL cannot be null or empty", nameof(url));
+        
+        if (string.IsNullOrWhiteSpace(owner))
+            throw new ArgumentException("Repository owner cannot be null or empty", nameof(owner));
         
         if (string.IsNullOrWhiteSpace(language))
             throw new ArgumentException("Repository language cannot be null or empty", nameof(language));
@@ -41,6 +57,9 @@ public class Repository : BaseEntity, IAggregateRoot
 
         Name = name;
         Url = url;
+        Owner = owner;
+        FullName = $"{owner}/{name}";
+        CloneUrl = url.EndsWith(".git") ? url : $"{url}.git";
         Language = language;
         Description = description;
         CreatedAt = DateTime.UtcNow;
@@ -68,9 +87,29 @@ public class Repository : BaseEntity, IAggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateDefaultBranch(string defaultBranch)
+    {
+        if (string.IsNullOrWhiteSpace(defaultBranch))
+            throw new ArgumentException("Default branch cannot be null or empty", nameof(defaultBranch));
+        
+        DefaultBranch = defaultBranch;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateStatistics(RepositoryStatistics statistics)
     {
         Statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateMetadata(bool? isPrivate = null, bool? isFork = null, bool? isArchived = null, 
+                              string? defaultBranch = null, DateTime? lastPushedAt = null)
+    {
+        if (isPrivate.HasValue) IsPrivate = isPrivate.Value;
+        if (isFork.HasValue) IsFork = isFork.Value;
+        if (isArchived.HasValue) IsArchived = isArchived.Value;
+        if (!string.IsNullOrWhiteSpace(defaultBranch)) DefaultBranch = defaultBranch;
+        if (lastPushedAt.HasValue) LastPushedAt = lastPushedAt.Value;
         UpdatedAt = DateTime.UtcNow;
     }
 

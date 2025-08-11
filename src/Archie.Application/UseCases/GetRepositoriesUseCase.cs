@@ -9,13 +9,16 @@ namespace Archie.Application.UseCases;
 public class GetRepositoriesUseCase
 {
     private readonly IRepositoryRepository _repositoryRepository;
+    private readonly IDocumentationRepository _documentationRepository;
     private readonly ILogger<GetRepositoriesUseCase> _logger;
 
     public GetRepositoriesUseCase(
         IRepositoryRepository repositoryRepository,
+        IDocumentationRepository documentationRepository,
         ILogger<GetRepositoriesUseCase> logger)
     {
         _repositoryRepository = repositoryRepository ?? throw new ArgumentNullException(nameof(repositoryRepository));
+        _documentationRepository = documentationRepository ?? throw new ArgumentNullException(nameof(documentationRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -28,6 +31,24 @@ public class GetRepositoriesUseCase
             var repositories = filter != null 
                 ? await _repositoryRepository.GetByFilterAsync(filter, cancellationToken)
                 : await _repositoryRepository.GetAllAsync(cancellationToken);
+
+            // Apply HasDocumentation filter if specified
+            if (filter?.HasDocumentation.HasValue == true)
+            {
+                var filteredRepositories = new List<Repository>();
+                
+                foreach (var repository in repositories)
+                {
+                    var hasDocumentation = await _documentationRepository.ExistsForRepositoryAsync(repository.Id, cancellationToken);
+                    
+                    if (hasDocumentation == filter.HasDocumentation.Value)
+                    {
+                        filteredRepositories.Add(repository);
+                    }
+                }
+                
+                repositories = filteredRepositories;
+            }
 
             var repositoryDtos = repositories.Select(MapToDto);
 

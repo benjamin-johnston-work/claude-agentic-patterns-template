@@ -66,6 +66,15 @@ public class ConversationSummaryType : ObjectType<ConversationSummaryDto>
         descriptor.Field(c => c.LastActivityAt)
             .Type<NonNullType<DateTimeType>>();
 
+        descriptor.Field(c => c.LastMessageAt)
+            .Type<NonNullType<DateTimeType>>();
+
+        descriptor.Field(c => c.RepositoryId)
+            .Type<IdType>();
+
+        descriptor.Field(c => c.RepositoryName)
+            .Type<StringType>();
+
         descriptor.Field(c => c.RepositoryNames)
             .Type<NonNullType<ListType<NonNullType<StringType>>>>();
 
@@ -74,6 +83,9 @@ public class ConversationSummaryType : ObjectType<ConversationSummaryDto>
 
         descriptor.Field(c => c.Duration)
             .Type<NonNullType<TimeSpanType>>();
+
+        descriptor.Field(c => c.Metadata)
+            .Type<NonNullType<ConversationMetadataType>>();
     }
 }
 
@@ -218,6 +230,15 @@ public class ConversationMetadataType : ObjectType<ConversationMetadataDto>
 
         descriptor.Field(m => m.TopicFrequency)
             .Type<NonNullType<AnyType>>();
+
+        descriptor.Field(m => m.Tags)
+            .Type<NonNullType<ListType<NonNullType<StringType>>>>();
+
+        descriptor.Field(m => m.Summary)
+            .Type<NonNullType<StringType>>();
+
+        descriptor.Field(m => m.Participants)
+            .Type<NonNullType<ListType<NonNullType<StringType>>>>();
     }
 }
 

@@ -48,6 +48,7 @@ builder.Services.AddScoped<GetRepositoryUseCase>();
 builder.Services.AddScoped<GetRepositoriesUseCase>();
 builder.Services.AddScoped<RefreshRepositoryUseCase>();
 builder.Services.AddScoped<RemoveRepositoryUseCase>();
+builder.Services.AddScoped<ValidateRepositoryUseCase>();
 
 // Add documentation use cases
 builder.Services.AddScoped<GenerateDocumentationUseCase>();
@@ -61,7 +62,11 @@ builder.Services.AddScoped<IConversationRepository, AzureSearchConversationRepos
 builder.Services.AddScoped<IConversationalAIService, ConversationalAIService>();
 builder.Services.AddScoped<IConversationContextService, ConversationContextService>();
 builder.Services.AddScoped<StartConversationUseCase>();
+builder.Services.AddScoped<ProcessQueryUseCase>();
 builder.Services.AddScoped<GetConversationUseCase>();
+
+// Add knowledge graph services
+builder.Services.AddScoped<IGraphStorageService, StubGraphStorageService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -80,6 +85,9 @@ builder.Services
     .AddGraphQLServer()
     .AddQueryType<Archie.Api.GraphQL.Resolvers.Query>()
     .AddMutationType<Mutation>()
+    // Configure Dictionary serialization for GraphQL
+    .BindRuntimeType<Dictionary<string, object>, AnyType>()
+    .BindRuntimeType<IDictionary<string, object>, AnyType>()
     .AddType<RepositoryType>()
     .AddType<RepositoryStatusType>()
     .AddType<BranchType>()
@@ -88,6 +96,9 @@ builder.Services
     .AddType<LanguageStatsType>()
     .AddType<AddRepositoryInputType>()
     .AddType<RepositoryFilterInputType>()
+    .AddType<ValidateRepositoryInputType>()
+    .AddType<ValidateRepositoryResultType>()
+    .AddType<RepositoryInfoType>()
     .AddType<SearchableDocumentType>()
     .AddType<DocumentMetadataType>()
     .AddType<SearchResultType>()
@@ -124,6 +135,34 @@ builder.Services
     .AddType<AttachmentTypeEnum>()
     .AddType<ResponseStyleEnum>()
     
+    // Add conversation input types
+    .AddType<StartConversationInputType>()
+    .AddType<QueryInputType>()
+    .AddType<ConversationPreferencesInputType>()
+    
+    // Add knowledge graph GraphQL types
+    .AddType<KnowledgeGraphType>()
+    .AddType<GraphStatisticsType>()
+    .AddType<GraphMetadataType>()
+    .AddType<CodeEntityType>()
+    .AddType<EntityLocationType>()
+    .AddType<EntityMetadataType>()
+    .AddType<EntityAttributeType>()
+    .AddType<CodeRelationshipType>()
+    .AddType<RelationshipMetadataType>()
+    .AddType<ArchitecturalPatternType>()
+    .AddType<PatternMetadataType>()
+    .AddType<PatternViolationType>()
+    .AddType<AntiPatternType>()
+    .AddType<GraphStatusType>()
+    .AddType<AnalysisDepthType>()
+    .AddType<EntityTypeEnumType>()
+    .AddType<AccessModifierType>()
+    .AddType<AttributeTypeEnumType>()
+    .AddType<RelationshipTypeEnumType>()
+    .AddType<PatternTypeEnumType>()
+    .AddType<ViolationSeverityType>()
+    
     .AddTypeExtension<RepositoryQueryResolver>()
     .AddTypeExtension<RepositoryMutationResolver>()
     .AddTypeExtension<SearchQueryResolver>()
@@ -134,8 +173,13 @@ builder.Services
     .AddTypeExtension<DocumentationQueryResolver>()
     .AddTypeExtension<DocumentationMutationResolver>()
     
+    // Add knowledge graph GraphQL resolvers  
+    .AddTypeExtension<KnowledgeGraphQueryResolver>()
+    .AddTypeExtension<KnowledgeGraphMutationResolver>()
+    
     // Add conversation GraphQL resolvers
     .AddTypeExtension<ConversationQueryResolver>()
+    .AddTypeExtension<ConversationMutationResolver>()
     
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true);
 

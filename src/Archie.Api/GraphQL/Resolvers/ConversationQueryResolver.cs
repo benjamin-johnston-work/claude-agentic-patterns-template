@@ -28,6 +28,7 @@ public class ConversationQueryResolver
     /// </summary>
     /// <param name="userId">User ID to get conversations for</param>
     /// <param name="status">Optional conversation status filter</param>
+    /// <param name="repositoryIds">Optional repository IDs to filter conversations</param>
     /// <param name="limit">Maximum number of conversations to return</param>
     /// <param name="offset">Number of conversations to skip</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -36,6 +37,7 @@ public class ConversationQueryResolver
     public async Task<List<ConversationSummaryDto>> GetConversations(
         Guid? userId = null,
         ConversationStatus? status = null,
+        List<Guid>? repositoryIds = null,
         int limit = 20,
         int offset = 0,
         CancellationToken cancellationToken = default)
@@ -50,7 +52,7 @@ public class ConversationQueryResolver
                 effectiveUserId, status);
 
             var result = await _getConversationUseCase.GetUserConversationsAsync(
-                effectiveUserId, status, limit, offset, cancellationToken);
+                effectiveUserId, status, repositoryIds, limit, offset, cancellationToken);
 
             if (result.IsSuccess)
             {

@@ -155,6 +155,11 @@ public class RepositoryAnalysisContext
     public ArchitecturalPatterns Patterns { get; set; } = new();
     public Dictionary<string, object> Metadata { get; set; } = new();
     public DateTime AnalyzedAt { get; set; } = DateTime.UtcNow;
+    
+    // Enhanced content analysis properties
+    public ProjectPurpose Purpose { get; set; } = new();
+    public ComponentRelationshipMap ComponentMap { get; set; } = new();
+    public List<ContentSummary> ContentSummaries { get; set; } = new();
 }
 
 /// <summary>

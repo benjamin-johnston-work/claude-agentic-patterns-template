@@ -5,7 +5,7 @@ using HotChocolate.Types;
 
 namespace Archie.Api.GraphQL.Resolvers;
 
-[ExtendObjectType<Mutation>]
+[ExtendObjectType(typeof(Mutation))]
 public class RepositoryMutationResolver
 {
     public async Task<RepositoryDto> AddRepositoryAsync(
@@ -45,5 +45,18 @@ public class RepositoryMutationResolver
             throw new GraphQLException(result.Error ?? "Failed to remove repository");
         }
         return result.Value;
+    }
+
+    public async Task<ValidateRepositoryResult> ValidateRepositoryAsync(
+        ValidateRepositoryInput input,
+        ValidateRepositoryUseCase useCase,
+        CancellationToken cancellationToken)
+    {
+        var result = await useCase.ExecuteAsync(input, cancellationToken);
+        if (result.IsFailure)
+        {
+            throw new GraphQLException(result.Error ?? "Failed to validate repository");
+        }
+        return result.Value!;
     }
 }

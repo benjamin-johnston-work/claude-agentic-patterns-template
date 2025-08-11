@@ -247,9 +247,3 @@ public class DocumentationMutationResolver
 
     #endregion
 }
-
-public class Mutation
-{
-    // This class serves as a placeholder for the root Mutation type
-    // Individual resolvers extend this using ExtendObjectType
-}

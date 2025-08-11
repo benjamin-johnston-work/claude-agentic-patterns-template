@@ -8,15 +8,17 @@ using Moq;
 
 namespace Archie.Application.Tests.UseCases;
 
+[TestFixture]
 public class AddRepositoryUseCaseTests
 {
-    private readonly Mock<IRepositoryRepository> _mockRepository;
-    private readonly Mock<IGitRepositoryService> _mockGitService;
-    private readonly Mock<IEventPublisher> _mockEventPublisher;
-    private readonly Mock<ILogger<AddRepositoryUseCase>> _mockLogger;
-    private readonly AddRepositoryUseCase _useCase;
+    private Mock<IRepositoryRepository> _mockRepository;
+    private Mock<IGitRepositoryService> _mockGitService;
+    private Mock<IEventPublisher> _mockEventPublisher;
+    private Mock<ILogger<AddRepositoryUseCase>> _mockLogger;
+    private AddRepositoryUseCase _useCase;
 
-    public AddRepositoryUseCaseTests()
+    [SetUp]
+    public void SetUp()
     {
         _mockRepository = new Mock<IRepositoryRepository>();
         _mockGitService = new Mock<IGitRepositoryService>();
@@ -30,7 +32,7 @@ public class AddRepositoryUseCaseTests
             _mockLogger.Object);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_ValidInput_ReturnsSuccess()
     {
         // Arrange
@@ -43,7 +45,7 @@ public class AddRepositoryUseCaseTests
         _mockGitService.Setup(g => g.ValidateRepositoryAccessAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         
-        _mockGitService.Setup(g => g.CloneRepositoryAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
+        _mockGitService.Setup(g => g.ConnectRepositoryAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(clonedRepository);
         
         _mockRepository.Setup(r => r.AddAsync(It.IsAny<Repository>(), It.IsAny<CancellationToken>()))
@@ -53,19 +55,19 @@ public class AddRepositoryUseCaseTests
         var result = await _useCase.ExecuteAsync(input);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Value);
-        Assert.Equal(input.Url, result.Value.Url);
+        Assert.That(result.IsSuccess, Is.True);
+        Assert.That(result.Value, Is.Not.Null);
+        Assert.That(result.Value.Url, Is.EqualTo(input.Url));
         
         _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<RepositoryAddedEvent>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_RepositoryAlreadyExists_ReturnsFailure()
     {
         // Arrange
         var input = new AddRepositoryInput { Url = "https://github.com/user/repo.git" };
-        var existingRepository = new Repository("ExistingRepo", input.Url, "C#");
+        var existingRepository = new Repository("ExistingRepo", input.Url, "user", "C#");
         
         _mockRepository.Setup(r => r.GetByUrlAsync(input.Url, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingRepository);
@@ -74,14 +76,14 @@ public class AddRepositoryUseCaseTests
         var result = await _useCase.ExecuteAsync(input);
 
         // Assert
-        Assert.True(result.IsFailure);
-        Assert.Equal("Repository already exists", result.Error);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.EqualTo("Repository already exists"));
         
         _mockGitService.Verify(g => g.ValidateRepositoryAccessAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<RepositoryAddedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_InvalidRepositoryAccess_ReturnsFailure()
     {
         // Arrange
@@ -97,14 +99,14 @@ public class AddRepositoryUseCaseTests
         var result = await _useCase.ExecuteAsync(input);
 
         // Assert
-        Assert.True(result.IsFailure);
-        Assert.Equal("Repository is not accessible or does not exist", result.Error);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Is.EqualTo("Repository is not accessible or does not exist"));
         
-        _mockGitService.Verify(g => g.CloneRepositoryAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockGitService.Verify(g => g.ConnectRepositoryAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<RepositoryAddedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    [Fact]
+    [Test]
     public async Task ExecuteAsync_GitServiceThrowsException_ReturnsFailure()
     {
         // Arrange
@@ -116,15 +118,15 @@ public class AddRepositoryUseCaseTests
         _mockGitService.Setup(g => g.ValidateRepositoryAccessAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         
-        _mockGitService.Setup(g => g.CloneRepositoryAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
+        _mockGitService.Setup(g => g.ConnectRepositoryAsync(input.Url, input.AccessToken, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Clone failed"));
 
         // Act
         var result = await _useCase.ExecuteAsync(input);
 
         // Assert
-        Assert.True(result.IsFailure);
-        Assert.Contains("Failed to add repository", result.Error);
+        Assert.That(result.IsFailure, Is.True);
+        Assert.That(result.Error, Does.Contain("STEP 2 FAILED - GitHub connection error:"));
         
         _mockRepository.Verify(r => r.AddAsync(It.IsAny<Repository>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<RepositoryAddedEvent>(), It.IsAny<CancellationToken>()), Times.Never);

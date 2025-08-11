@@ -42,6 +42,21 @@ public class DocumentationType : ObjectType<DocumentationDto>
         descriptor.Field(d => d.ErrorMessage)
             .Type<StringType>();
 
+        descriptor.Field(d => d.TotalSections)
+            .Type<NonNullType<IntType>>();
+
+        descriptor.Field(d => d.EstimatedReadingTime)
+            .Type<NonNullType<FloatType>>();
+
+        descriptor.Field(d => d.LastGenerated)
+            .Type<DateTimeType>();
+
+        descriptor.Field(d => d.GenerationDuration)
+            .Type<NonNullType<FloatType>>();
+
+        descriptor.Field(d => d.SectionsGenerated)
+            .Type<NonNullType<IntType>>();
+
         // Navigation property back to repository
         descriptor.Field("repository")
             .Type<RepositoryType>()
@@ -112,6 +127,9 @@ public class DocumentationMetadataType : ObjectType<DocumentationMetadataDto>
 
         descriptor.Field(m => m.CustomProperties)
             .Type<AnyType>();
+
+        descriptor.Field(m => m.TotalWords)
+            .Type<NonNullType<IntType>>();
     }
 }
 
@@ -128,7 +146,8 @@ public class DocumentationStatisticsType : ObjectType<DocumentationStatisticsDto
         descriptor.Field(s => s.WordCount)
             .Type<NonNullType<IntType>>();
 
-        descriptor.Field(s => s.GenerationTimeSeconds)
+        descriptor.Field("generationTime")
+            .Resolve(context => context.Parent<DocumentationStatisticsDto>().GenerationTimeSeconds)
             .Type<NonNullType<FloatType>>();
 
         descriptor.Field(s => s.AccuracyScore)
@@ -187,6 +206,15 @@ public class SectionMetadataType : ObjectType<SectionMetadataDto>
 
         descriptor.Field(m => m.AdditionalProperties)
             .Type<AnyType>();
+
+        descriptor.Field(m => m.WordCount)
+            .Type<NonNullType<IntType>>();
+
+        descriptor.Field(m => m.ReadingTime)
+            .Type<NonNullType<FloatType>>();
+
+        descriptor.Field(m => m.LastModified)
+            .Type<DateTimeType>();
     }
 }
 

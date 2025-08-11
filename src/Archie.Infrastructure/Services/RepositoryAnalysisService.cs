@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Archie.Application.Interfaces;
+using Archie.Domain.ValueObjects;
 using Archie.Infrastructure.GitHub;
 using Archie.Infrastructure.GitHub.Models;
 
@@ -14,6 +15,7 @@ public class RepositoryAnalysisService : IRepositoryAnalysisService
 {
     private readonly IRepositoryRepository _repositoryRepository;
     private readonly IGitHubService _gitHubService;
+    private readonly ContentSummarizationService _contentSummarizationService;
     private readonly ILogger<RepositoryAnalysisService> _logger;
 
     // Cache for analysis results
@@ -23,10 +25,12 @@ public class RepositoryAnalysisService : IRepositoryAnalysisService
     public RepositoryAnalysisService(
         IRepositoryRepository repositoryRepository,
         IGitHubService gitHubService,
+        ContentSummarizationService contentSummarizationService,
         ILogger<RepositoryAnalysisService> logger)
     {
         _repositoryRepository = repositoryRepository ?? throw new ArgumentNullException(nameof(repositoryRepository));
         _gitHubService = gitHubService ?? throw new ArgumentNullException(nameof(gitHubService));
+        _contentSummarizationService = contentSummarizationService ?? throw new ArgumentNullException(nameof(contentSummarizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -81,6 +85,18 @@ public class RepositoryAnalysisService : IRepositoryAnalysisService
             // Get repository metadata
             context.Metadata = await GetRepositoryMetadataAsync(repository.Url, cancellationToken: cancellationToken);
 
+            // ENHANCED: Extract project purpose from content analysis
+            context.Purpose = await ExtractProjectPurposeAsync(context.ImportantFiles, cancellationToken);
+            
+            // ENHANCED: Build component relationships
+            context.ComponentMap = await BuildComponentRelationshipsAsync(context.ImportantFiles, cancellationToken);
+            
+            // ENHANCED: Create content summaries
+            context.ContentSummaries = await CreateContentSummariesAsync(context.ImportantFiles, cancellationToken);
+            
+            // ENHANCED: Update project type based on content analysis
+            await EnhanceProjectTypeFromContentAsync(context, cancellationToken);
+
             // Cache the result
             _analysisCache[repositoryId] = (context, DateTime.UtcNow);
 
@@ -112,8 +128,27 @@ public class RepositoryAnalysisService : IRepositoryAnalysisService
             var tree = await _gitHubService.GetRepositoryTreeWithMetadataAsync(owner, repo, "main", true, accessToken, cancellationToken);
             var files = tree.Tree;
             
+            // Validate that we actually got repository content
+            if (files == null || !files.Any())
+            {
+                _logger.LogWarning("No files found in repository: {RepositoryUrl}. This may indicate an empty repository, access issues, or API problems.", repositoryUrl);
+                return new ProjectStructureAnalysis 
+                { 
+                    ProjectType = "Empty or Inaccessible Repository",
+                    TotalFiles = 0,
+                    TotalSizeBytes = 0,
+                    DirectoryPurpose = new Dictionary<string, List<string>>(),
+                    EntryPoints = new List<string>(),
+                    ConfigurationFiles = new List<string>(),
+                    TestFiles = new List<string>(),
+                    DocumentationFiles = new List<string>()
+                };
+            }
+            
             structure.TotalFiles = files.Count();
             structure.TotalSizeBytes = files.Where(f => f.Size.HasValue).Sum(f => f.Size.Value);
+            
+            _logger.LogDebug("Found {FileCount} files in repository {RepositoryUrl}", structure.TotalFiles, repositoryUrl);
 
             // Analyze directory structure
             var directories = files.Select(f => Path.GetDirectoryName(f.Path))
@@ -963,6 +998,266 @@ public class RepositoryAnalysisService : IRepositoryAnalysisService
         
         return concepts;
     }
+
+    #endregion
+
+    #region Enhanced Content Analysis Methods
+
+    /// <summary>
+    /// Extract project purpose from README and source files using content analysis
+    /// </summary>
+    private async Task<ProjectPurpose> ExtractProjectPurposeAsync(List<FileAnalysis> files, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogDebug("Extracting project purpose from {FileCount} files", files.Count);
+
+            // First, try to extract purpose from README
+            var readmeFile = files.FirstOrDefault(f => 
+                Path.GetFileName(f.FilePath).ToLowerInvariant().Contains("readme") && 
+                !string.IsNullOrEmpty(f.Content));
+
+            ProjectPurpose purpose;
+            if (readmeFile != null)
+            {
+                purpose = await _contentSummarizationService.ExtractProjectPurposeFromReadmeAsync(readmeFile.Content);
+                _logger.LogDebug("Extracted purpose from README: {Description}", purpose.Description);
+            }
+            else
+            {
+                purpose = new ProjectPurpose();
+                _logger.LogDebug("No README found, analyzing source code for purpose");
+            }
+
+            // If README analysis didn't provide clear purpose, analyze source code
+            if (purpose.IsEmpty)
+            {
+                await EnhancePurposeFromSourceCodeAsync(purpose, files, cancellationToken);
+            }
+
+            // Add technical highlights from code analysis
+            await AddTechnicalHighlightsAsync(purpose, files, cancellationToken);
+
+            return purpose;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error extracting project purpose");
+            return new ProjectPurpose("Software project", "Software", "Provides functionality for users");
+        }
+    }
+
+    /// <summary>
+    /// Build component relationships by analyzing imports, exports, and dependencies
+    /// </summary>
+    private async Task<ComponentRelationshipMap> BuildComponentRelationshipsAsync(List<FileAnalysis> files, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var relationshipMap = new ComponentRelationshipMap();
+
+            foreach (var file in files.Where(f => !string.IsNullOrEmpty(f.Content)))
+            {
+                var componentName = Path.GetFileNameWithoutExtension(file.FilePath);
+
+                // Analyze what this component does
+                var summary = await _contentSummarizationService.SummarizeCodeFileAsync(file.FilePath, file.Content);
+                relationshipMap.AddComponentPurpose(componentName, summary.FunctionalityDescription);
+
+                // Identify entry points
+                if (IsEntryPoint(file.FilePath, file.Content))
+                {
+                    relationshipMap.AddEntryPoint(componentName);
+                }
+
+                // Identify core modules (files with high importance or multiple dependencies)
+                if (file.ImportanceScore > 0.7 || file.Content.Length > 1000)
+                {
+                    relationshipMap.AddCoreModule(componentName);
+                }
+            }
+
+            _logger.LogDebug("Built component relationship map with {Components} components, {EntryPoints} entry points",
+                relationshipMap.ComponentPurposes.Count, relationshipMap.EntryPoints.Count);
+
+            return relationshipMap;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error building component relationships");
+            return new ComponentRelationshipMap();
+        }
+    }
+
+    /// <summary>
+    /// Create detailed content summaries for important files
+    /// </summary>
+    private async Task<List<ContentSummary>> CreateContentSummariesAsync(List<FileAnalysis> files, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var summaries = new List<ContentSummary>();
+
+            var significantFiles = files
+                .Where(f => !string.IsNullOrEmpty(f.Content) && f.ImportanceScore > 0.5)
+                .OrderByDescending(f => f.ImportanceScore)
+                .Take(10); // Limit to most important files
+
+            foreach (var file in significantFiles)
+            {
+                var summary = await _contentSummarizationService.SummarizeCodeFileAsync(file.FilePath, file.Content);
+                if (summary.IsSignificant)
+                {
+                    summaries.Add(summary);
+                }
+            }
+
+            _logger.LogDebug("Created {Count} content summaries", summaries.Count);
+            return summaries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error creating content summaries");
+            return new List<ContentSummary>();
+        }
+    }
+
+    /// <summary>
+    /// Enhance project type detection using content analysis
+    /// </summary>
+    private async Task EnhanceProjectTypeFromContentAsync(RepositoryAnalysisContext context, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var originalType = context.Structure.ProjectType;
+
+            // Use purpose and content analysis to improve project type detection
+            var businessDomain = context.Purpose.BusinessDomain.ToLowerInvariant();
+            var hasHtmlFiles = context.ImportantFiles.Any(f => f.FilePath.EndsWith(".html"));
+            var hasCanvasCode = context.ContentSummaries.Any(s => s.FunctionalityDescription.Contains("canvas", StringComparison.OrdinalIgnoreCase));
+
+            // Enhanced project type detection
+            context.Structure.ProjectType = businessDomain switch
+            {
+                "game" when hasHtmlFiles && hasCanvasCode => "HTML5 Game",
+                "game" => "Game Application", 
+                "web api" => "Web API",
+                "library" => "Software Library",
+                "web application" => "Web Application",
+                "cli tool" => "Command Line Tool",
+                "documentation" => "Documentation Site",
+                _ when hasHtmlFiles && context.Languages.Contains("JavaScript") => "Web Application",
+                _ when context.ImportantFiles.Any(f => f.FilePath.Contains("server") || f.FilePath.Contains("api")) => "Web API",
+                _ when originalType == "Unknown" && context.Languages.Contains("JavaScript") => "JavaScript Application",
+                _ => originalType == "Unknown" ? "Software Application" : originalType
+            };
+
+            if (context.Structure.ProjectType != originalType)
+            {
+                _logger.LogDebug("Enhanced project type from '{Original}' to '{Enhanced}' based on content analysis", 
+                    originalType, context.Structure.ProjectType);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error enhancing project type from content");
+        }
+    }
+
+    #region Helper Methods for Content Analysis
+
+    private async Task EnhancePurposeFromSourceCodeAsync(ProjectPurpose purpose, List<FileAnalysis> files, CancellationToken cancellationToken)
+    {
+        // Look for game patterns in source code
+        var gameKeywords = new[] { "ball", "paddle", "brick", "game", "player", "score", "collision" };
+        var webKeywords = new[] { "server", "api", "endpoint", "route", "controller" };
+        var libraryKeywords = new[] { "export", "module", "library", "util", "helper" };
+
+        var allContent = string.Join(" ", files.Select(f => f.Content ?? "")).ToLowerInvariant();
+
+        if (gameKeywords.Any(keyword => allContent.Contains(keyword)))
+        {
+            purpose.Description = "Interactive game application";
+            purpose.BusinessDomain = "Game";
+            purpose.UserValue = "Provides entertainment and interactive gameplay";
+
+            // Detect specific game type
+            if (allContent.Contains("brick") && allContent.Contains("ball"))
+            {
+                purpose.Description = "Brick-breaking game with ball physics";
+                purpose.AddFeature("Ball and paddle mechanics");
+                purpose.AddFeature("Brick collision detection");
+                purpose.AddFeature("Score tracking");
+            }
+        }
+        else if (webKeywords.Any(keyword => allContent.Contains(keyword)))
+        {
+            purpose.Description = "Web API or server application";
+            purpose.BusinessDomain = "Web API";
+            purpose.UserValue = "Provides data and services through HTTP endpoints";
+        }
+        else if (libraryKeywords.Any(keyword => allContent.Contains(keyword)))
+        {
+            purpose.Description = "Software library or utility package";
+            purpose.BusinessDomain = "Library";
+            purpose.UserValue = "Provides reusable functionality for other applications";
+        }
+    }
+
+    private async Task AddTechnicalHighlightsAsync(ProjectPurpose purpose, List<FileAnalysis> files, CancellationToken cancellationToken)
+    {
+        var languages = files.Select(f => f.Language).Where(l => !string.IsNullOrEmpty(l)).Distinct().ToList();
+        
+        if (languages.Any())
+        {
+            purpose.AddTechnicalHighlight("Languages", string.Join(", ", languages.Take(3)));
+        }
+
+        // Check for modern JavaScript features
+        var jsFiles = files.Where(f => f.Language.Equals("JavaScript", StringComparison.OrdinalIgnoreCase));
+        if (jsFiles.Any())
+        {
+            var hasModernFeatures = jsFiles.Any(f => 
+                f.Content?.Contains("async") == true || 
+                f.Content?.Contains("await") == true ||
+                f.Content?.Contains("=>") == true);
+                
+            if (hasModernFeatures)
+            {
+                purpose.AddTechnicalHighlight("JavaScript", "Modern ES6+ features with async/await");
+            }
+        }
+
+        // Check for HTML5 Canvas
+        var hasCanvas = files.Any(f => f.Content?.Contains("canvas") == true || f.Content?.Contains("getContext") == true);
+        if (hasCanvas)
+        {
+            purpose.AddTechnicalHighlight("Graphics", "HTML5 Canvas for rendering and animation");
+        }
+    }
+
+    private static bool IsEntryPoint(string filePath, string content)
+    {
+        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        
+        // Common entry point file names
+        if (fileName == "index.html" || fileName == "main.js" || fileName == "app.js" || 
+            fileName == "index.js" || fileName == "main.py" || fileName == "program.cs")
+        {
+            return true;
+        }
+
+        // Check content for entry point patterns
+        if (content.Contains("document.addEventListener") || content.Contains("window.onload") ||
+            content.Contains("main()") || content.Contains("if __name__ == '__main__'"))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    #endregion
 
     #endregion
 }

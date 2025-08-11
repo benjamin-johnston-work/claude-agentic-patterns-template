@@ -3,65 +3,71 @@ using Archie.Domain.ValueObjects;
 
 namespace Archie.Domain.Tests.Entities;
 
+[TestFixture]
 public class RepositoryTests
 {
-    [Fact]
+    [Test]
     public void Constructor_ValidInputs_CreatesRepository()
     {
         // Arrange
         var name = "TestRepo";
         var url = "https://github.com/user/repo.git";
+        var owner = "user";
         var language = "C#";
         var description = "Test repository";
 
         // Act
-        var repository = new Repository(name, url, language, description);
+        var repository = new Repository(name, url, owner, language, description);
 
         // Assert
-        Assert.Equal(name, repository.Name);
-        Assert.Equal(url, repository.Url);
-        Assert.Equal(language, repository.Language);
-        Assert.Equal(description, repository.Description);
-        Assert.Equal(RepositoryStatus.Connecting, repository.Status);
-        Assert.True(repository.CreatedAt <= DateTime.UtcNow);
-        Assert.True(repository.UpdatedAt <= DateTime.UtcNow);
-        Assert.NotEqual(Guid.Empty, repository.Id);
+        Assert.That(repository.Name, Is.EqualTo(name));
+        Assert.That(repository.Url, Is.EqualTo(url));
+        Assert.That(repository.Owner, Is.EqualTo(owner));
+        Assert.That(repository.FullName, Is.EqualTo($"{owner}/{name}"));
+        Assert.That(repository.CloneUrl, Is.EqualTo(url)); // Since URL already ends with .git
+        Assert.That(repository.Language, Is.EqualTo(language));
+        Assert.That(repository.Description, Is.EqualTo(description));
+        Assert.That(repository.DefaultBranch, Is.EqualTo("main"));
+        Assert.That(repository.Status, Is.EqualTo(RepositoryStatus.Connecting));
+        Assert.That(repository.CreatedAt <= DateTime.UtcNow, Is.True);
+        Assert.That(repository.UpdatedAt <= DateTime.UtcNow, Is.True);
+        Assert.That(repository.Id, Is.Not.EqualTo(Guid.Empty));
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData(null)]
+    [TestCase("")]
+    [TestCase(" ")]
+    [TestCase(null)]
     public void Constructor_InvalidName_ThrowsArgumentException(string invalidName)
     {
         // Arrange
         var url = "https://github.com/user/repo.git";
+        var owner = "user";
         var language = "C#";
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => new Repository(invalidName, url, language));
+        Assert.Throws<ArgumentException>(() => new Repository(invalidName, url, owner, language));
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData(null)]
-    [InlineData("invalid-url")]
+    [TestCase("")]
+    [TestCase(" ")]
+    [TestCase(null)]
+    [TestCase("invalid-url")]
     public void Constructor_InvalidUrl_ThrowsArgumentException(string invalidUrl)
     {
         // Arrange
         var name = "TestRepo";
+        var owner = "user";
         var language = "C#";
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => new Repository(name, invalidUrl, language));
+        Assert.Throws<ArgumentException>(() => new Repository(name, invalidUrl, owner, language));
     }
 
-    [Fact]
+    [Test]
     public void UpdateStatus_ValidTransition_UpdatesStatus()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var originalUpdatedAt = repository.UpdatedAt;
 
         // Act
@@ -69,15 +75,15 @@ public class RepositoryTests
         repository.UpdateStatus(RepositoryStatus.Connected);
 
         // Assert
-        Assert.Equal(RepositoryStatus.Connected, repository.Status);
-        Assert.True(repository.UpdatedAt > originalUpdatedAt);
+        Assert.That(repository.Status, Is.EqualTo(RepositoryStatus.Connected));
+        Assert.That(repository.UpdatedAt > originalUpdatedAt, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void UpdateStatus_InvalidTransition_ThrowsInvalidOperationException()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         repository.UpdateStatus(RepositoryStatus.Connected);
         repository.UpdateStatus(RepositoryStatus.Analyzing);
         repository.UpdateStatus(RepositoryStatus.Ready);
@@ -86,26 +92,26 @@ public class RepositoryTests
         Assert.Throws<InvalidOperationException>(() => repository.UpdateStatus(RepositoryStatus.Connecting));
     }
 
-    [Fact]
+    [Test]
     public void AddBranch_ValidBranch_AddsBranch()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var branch = new Branch("main", true, repository.Id);
 
         // Act
         repository.AddBranch(branch);
 
         // Assert
-        Assert.Single(repository.Branches);
-        Assert.Equal(branch, repository.Branches.First());
+        Assert.That(repository.Branches.Count(), Is.EqualTo(1));
+        Assert.That(repository.Branches.First(), Is.EqualTo(branch));
     }
 
-    [Fact]
+    [Test]
     public void AddBranch_DuplicateBranchName_ThrowsInvalidOperationException()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var branch1 = new Branch("main", true, repository.Id);
         var branch2 = new Branch("main", false, repository.Id);
         repository.AddBranch(branch1);
@@ -114,22 +120,22 @@ public class RepositoryTests
         Assert.Throws<InvalidOperationException>(() => repository.AddBranch(branch2));
     }
 
-    [Fact]
+    [Test]
     public void AddBranch_WrongRepositoryId_ThrowsArgumentException()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var branch = new Branch("main", true, Guid.NewGuid()); // Wrong repository ID
 
         // Act & Assert
         Assert.Throws<ArgumentException>(() => repository.AddBranch(branch));
     }
 
-    [Fact]
+    [Test]
     public void UpdateStatistics_ValidStatistics_UpdatesStatistics()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var languageBreakdown = new Dictionary<string, LanguageStats>
         {
             { "C#", new LanguageStats("C#", 10, 1000, 80.0) },
@@ -143,15 +149,15 @@ public class RepositoryTests
         repository.UpdateStatistics(statistics);
 
         // Assert
-        Assert.Equal(statistics, repository.Statistics);
-        Assert.True(repository.UpdatedAt > originalUpdatedAt);
+        Assert.That(repository.Statistics, Is.EqualTo(statistics));
+        Assert.That(repository.UpdatedAt > originalUpdatedAt, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void GetDefaultBranch_HasDefaultBranch_ReturnsDefaultBranch()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         var defaultBranch = new Branch("main", true, repository.Id);
         var regularBranch = new Branch("feature", false, repository.Id);
         repository.AddBranch(defaultBranch);
@@ -161,41 +167,41 @@ public class RepositoryTests
         var result = repository.GetDefaultBranch();
 
         // Assert
-        Assert.Equal(defaultBranch, result);
+        Assert.That(result, Is.EqualTo(defaultBranch));
     }
 
-    [Fact]
+    [Test]
     public void IsReady_StatusReady_ReturnsTrue()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         repository.UpdateStatus(RepositoryStatus.Connected);
         repository.UpdateStatus(RepositoryStatus.Analyzing);
         repository.UpdateStatus(RepositoryStatus.Ready);
 
         // Act & Assert
-        Assert.True(repository.IsReady());
+        Assert.That(repository.IsReady(), Is.True);
     }
 
-    [Fact]
+    [Test]
     public void IsConnected_ConnectedStatus_ReturnsTrue()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         repository.UpdateStatus(RepositoryStatus.Connected);
 
         // Act & Assert
-        Assert.True(repository.IsConnected());
+        Assert.That(repository.IsConnected(), Is.True);
     }
 
-    [Fact]
+    [Test]
     public void HasError_ErrorStatus_ReturnsTrue()
     {
         // Arrange
-        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "C#");
+        var repository = new Repository("TestRepo", "https://github.com/user/repo.git", "user", "C#");
         repository.UpdateStatus(RepositoryStatus.Error);
 
         // Act & Assert
-        Assert.True(repository.HasError());
+        Assert.That(repository.HasError(), Is.True);
     }
 }
