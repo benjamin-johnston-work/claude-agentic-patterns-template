@@ -1,23 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Archie.Infrastructure.Configuration;
 
 public class GitOptions
 {
     public const string SectionName = "Git";
 
-    public string TempDirectory { get; set; } = Path.GetTempPath();
-    public int CloneTimeoutMinutes { get; set; } = 10;
-    public int MaxConcurrentClones { get; set; } = 5;
-    public bool CleanupAfterAnalysis { get; set; } = true;
+    public int TimeoutSeconds { get; set; } = 30;
+    public int MaxConcurrentRequests { get; set; } = 5;
+    public int RateLimitDelaySeconds { get; set; } = 60;
+    public int RetryAttempts { get; set; } = 3;
+    public int RetryDelaySeconds { get; set; } = 2;
+    public string UserAgent { get; set; } = "Archie-Documentation-Platform/1.0";
 }
 
-public class Neo4jOptions
+public class GitHubOptions
 {
-    public const string SectionName = "Neo4j";
+    public const string SectionName = "GitHub";
 
-    public string Uri { get; set; } = "bolt://localhost:7687";
-    public string Username { get; set; } = "neo4j";
-    public string Password { get; set; } = "password";
-    public string Database { get; set; } = "neo4j";
-    public int ConnectionTimeoutSeconds { get; set; } = 30;
-    public int MaxConnectionPoolSize { get; set; } = 100;
+    public string? DefaultAccessToken { get; set; }
+    public int ApiTimeoutSeconds { get; set; } = 30;
+    public int RateLimitBuffer { get; set; } = 100; // Reserve buffer for rate limit
+    public bool EnableRateLimitProtection { get; set; } = true;
+    public string UserAgent { get; set; } = "Archie-Documentation-Platform/1.0";
+    public int MaxTreeDepthForRecursion { get; set; } = 10;
 }
+
