@@ -10,14 +10,6 @@ build/
 .env
 .env.local
 
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
 *.log
 
@@ -28,3 +20,46 @@ Thumbs.db
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
+
+# .NET Build Artifacts
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.deps.json
+*.runtimeconfig.json
+
+# .NET Test Results
+TestResults/
+coverage.cobertura.xml
+*.coverage
+*.coveragexml
+
+# .NET Package Restore
+packages/
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+*.nuget.cache
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Temporary and working files
+*.tmp
+*.temp
+nul
+
+# OS files
+Thumbs.db
+.DS_Store
