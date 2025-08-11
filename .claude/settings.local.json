@@ -107,7 +107,8 @@
       "Bash(.scriptsStop-ArchieDevEnvironment.ps1)",
       "Bash(start:*)",
       "Bash(.scriptsStart-ArchieDevEnvironment.ps1)",
-      "WebFetch(domain:stackoverflow.com)"
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(git reset:*)"
     ],
     "deny": []
   }
