@@ -1,0 +1,61 @@
+### Add the AIBenjamin repository first
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation AddRepository($input: AddRepositoryInput!) { addRepository(input: $input) { id name url description language } }",
+  "variables": {
+    "input": {
+      "url": "https://github.com/benjamin-johnston-work/AIBenjamin",
+      "name": "AIBenjamin",
+      "description": "AI-powered assistant for business and technical questions"
+    }
+  }
+}
+
+### Get the repository to check if it was added
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "query GetRepositories { repositories { id name url description language } }"
+}
+
+### Generate documentation for the AIBenjamin repository
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation GenerateDocumentation($input: GenerateDocumentationInput!) { generateDocumentation(input: $input) { id repositoryId title status sections { id title content type order } metadata { repositoryName primaryLanguage languages frameworks dependencies } statistics { totalSections wordCount generationTime accuracyScore } } }",
+  "variables": {
+    "input": {
+      "repositoryId": "REPOSITORY_ID_FROM_PREVIOUS_QUERY",
+      "sections": ["OVERVIEW", "ARCHITECTURE", "GETTING_STARTED", "USAGE", "API_REFERENCE"],
+      "includeCodeExamples": true,
+      "includeApiReference": true,
+      "customInstructions": "Focus on the AI assistant capabilities and technical architecture"
+    }
+  }
+}
+
+### Query the generated documentation
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "query GetDocumentation($repositoryId: ID!) { documentation(repositoryId: $repositoryId) { id title status sections { id title content type order codeReferences { filePath codeSnippet description } } metadata { repositoryName primaryLanguage languages frameworks } statistics { totalSections wordCount accuracyScore } } }",
+  "variables": {
+    "repositoryId": "REPOSITORY_ID_FROM_ADD_REPOSITORY"
+  }
+}
+
+### Search documentation content
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "query SearchDocumentation($query: String!) { searchDocumentation(query: $query) { id title content type codeReferences { filePath description } } }",
+  "variables": {
+    "query": "AI assistant configuration"
+  }
+}

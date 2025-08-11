@@ -1,0 +1,41 @@
+### Test GraphQL endpoint is working
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "query { __type(name: \"Query\") { name } }"
+}
+
+### Test getting current repositories  
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "query GetRepositories { repositories { id name url status language description createdAt updatedAt } }"
+}
+
+### Test adding a simple repository (GitHub Hello World)
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation AddRepository($input: AddRepositoryInput!) { addRepository(input: $input) { id name url language description status createdAt updatedAt } }",
+  "variables": {
+    "input": {
+      "url": "https://github.com/octocat/Hello-World"
+    }
+  }
+}
+
+### Test adding TypeScript repository
+POST http://localhost:5001/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation AddRepository($input: AddRepositoryInput!) { addRepository(input: $input) { id name url language description status createdAt updatedAt } }",
+  "variables": {
+    "input": {
+      "url": "https://github.com/microsoft/typescript"
+    }
+  }
+}

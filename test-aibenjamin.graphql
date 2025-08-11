@@ -1,0 +1,13 @@
+mutation {
+  addRepository(input: {
+    url: "https://github.com/benjamin-johnston-work/AIBenjamin"
+    name: "AIBenjamin"
+    description: "Test repository to validate enhanced AI documentation generation"
+  }) {
+    id
+    name
+    url
+    status
+    lastUpdated
+  }
+}

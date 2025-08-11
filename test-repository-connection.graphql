@@ -1,0 +1,48 @@
+# Test repository connection workflow
+
+# First, check current repositories
+query GetRepositories {
+  repositories {
+    id
+    name
+    url
+    status
+    language
+    description
+    createdAt
+    updatedAt
+  }
+}
+
+# Test adding a repository
+mutation AddRepository {
+  addRepository(input: {
+    url: "https://github.com/microsoft/typescript"
+    accessToken: ""
+  }) {
+    id
+    name
+    url
+    language
+    description
+    status
+    createdAt
+    updatedAt
+  }
+}
+
+# Alternative test with simpler repository
+mutation AddSimpleRepository {
+  addRepository(input: {
+    url: "https://github.com/octocat/Hello-World"
+  }) {
+    id
+    name
+    url
+    language
+    description
+    status
+    createdAt
+    updatedAt
+  }
+}

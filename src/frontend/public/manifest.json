@@ -1,0 +1,40 @@
+{
+  "name": "Archie - AI Documentation Assistant",
+  "short_name": "Archie",
+  "description": "AI-powered documentation assistant for code repositories",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192x192.png",
+      "sizes": "192x192", 
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png", 
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "developer", "documentation"],
+  "lang": "en",
+  "dir": "ltr",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

@@ -12,6 +12,9 @@ using Archie.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add local secrets configuration (not tracked by git)
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Add configuration
 builder.Services.Configure<GitOptions>(builder.Configuration.GetSection(GitOptions.SectionName));
 builder.Services.Configure<GitHubOptions>(builder.Configuration.GetSection(GitHubOptions.SectionName));

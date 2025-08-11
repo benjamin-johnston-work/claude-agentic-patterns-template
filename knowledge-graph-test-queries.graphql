@@ -1,0 +1,511 @@
+# Knowledge Graph Test Queries for Feature 05
+# Test these queries using the GraphQL playground at /graphql when the API is running
+
+# ================================================================
+# 1. BASIC KNOWLEDGE GRAPH QUERIES
+# ================================================================
+
+# Get all knowledge graphs
+query GetAllKnowledgeGraphs {
+  knowledgeGraphs {
+    id
+    repositoryIds
+    status
+    createdAt
+    lastUpdatedAt
+    statistics {
+      totalEntities
+      totalRelationships
+      detectedPatterns
+      averageComplexity
+      crossRepositoryRelationships
+      lastAnalysis
+    }
+    metadata {
+      description
+      analysisDepth
+      includePatterns
+      includeCrossRepository
+      supportedLanguages
+      createdBy
+    }
+  }
+}
+
+# Get a specific knowledge graph by ID
+query GetKnowledgeGraphById($id: ID!) {
+  knowledgeGraph(id: $id) {
+    id
+    repositoryIds
+    status
+    statistics {
+      totalEntities
+      totalRelationships
+      detectedPatterns
+      entityTypeDistribution
+      relationshipTypeDistribution
+      patternTypeDistribution
+      averageComplexity
+    }
+  }
+}
+
+# Get knowledge graph by repository IDs
+query GetKnowledgeGraphByRepositories($repositoryIds: [ID!]!) {
+  knowledgeGraphByRepositories(repositoryIds: $repositoryIds) {
+    id
+    status
+    statistics {
+      totalEntities
+      totalRelationships
+      detectedPatterns
+    }
+  }
+}
+
+# ================================================================
+# 2. ENTITY QUERIES
+# ================================================================
+
+# Get all entities for a repository
+query GetEntitiesByRepository($repositoryId: ID!) {
+  entitiesByRepository(repositoryId: $repositoryId) {
+    id
+    entityId
+    name
+    fullName
+    type
+    filePath
+    language
+    location {
+      startLine
+      endLine
+      lineCount
+    }
+    metadata {
+      namespace
+      accessModifier
+      modifiers
+      complexityScore
+      isStatic
+      isAbstract
+    }
+    isClass
+    isInterface
+    isMethod
+    complexityScore
+  }
+}
+
+# Query entities with filters
+query QueryEntities($input: EntityQueryInput!) {
+  entities(input: $input) {
+    id
+    name
+    type
+    language
+    complexityScore
+    metadata {
+      namespace
+      accessModifier
+    }
+  }
+}
+
+# Example variables for QueryEntities:
+# {
+#   "input": {
+#     "repositoryIds": ["repository-guid-here"],
+#     "entityTypes": ["CLASS", "INTERFACE"],
+#     "languageFilter": ["csharp"],
+#     "limit": 50
+#   }
+# }
+
+# Get a specific entity by ID
+query GetEntity($entityId: String!) {
+  entity(entityId: $entityId) {
+    id
+    name
+    fullName
+    type
+    filePath
+    content
+    metadata {
+      namespace
+      accessModifier
+      modifiers
+      annotations
+      signature
+      complexityScore
+    }
+    attributes {
+      name
+      value
+      type
+    }
+  }
+}
+
+# Search entities by text query
+query SearchEntities($query: String!, $repositoryIds: [ID!], $limit: Int!) {
+  searchEntities(query: $query, repositoryIds: $repositoryIds, limit: $limit) {
+    id
+    name
+    type
+    language
+    filePath
+    metadata {
+      namespace
+      complexityScore
+    }
+  }
+}
+
+# Find similar entities
+query FindSimilarEntities($entityId: String!, $threshold: Float!) {
+  findSimilarEntities(entityId: $entityId, threshold: $threshold) {
+    id
+    name
+    type
+    filePath
+    language
+  }
+}
+
+# ================================================================
+# 3. RELATIONSHIP QUERIES
+# ================================================================
+
+# Get relationships for a specific entity
+query GetEntityRelationships($entityId: String!, $type: RelationshipType) {
+  entityRelationships(entityId: $entityId, type: $type) {
+    id
+    sourceEntityId
+    targetEntityId
+    type
+    weight
+    detectedAt
+    metadata {
+      confidence
+      detectionMethod
+      sourceReferences
+      isHighConfidence
+    }
+    isStrongRelationship
+    isStructuralRelationship
+    isBehavioralRelationship
+  }
+}
+
+# Find relationship path between entities
+query FindRelationshipPath($input: FindRelationshipPathInput!) {
+  findRelationshipPath(input: $input) {
+    id
+    sourceEntityId
+    targetEntityId
+    type
+    weight
+    metadata {
+      confidence
+      detectionMethod
+    }
+  }
+}
+
+# Example variables for FindRelationshipPath:
+# {
+#   "input": {
+#     "sourceEntityId": "source-entity-id",
+#     "targetEntityId": "target-entity-id",
+#     "maxDepth": 5
+#   }
+# }
+
+# ================================================================
+# 4. ARCHITECTURAL PATTERN QUERIES
+# ================================================================
+
+# Get all architectural patterns for a repository
+query GetRepositoryPatterns($repositoryId: ID!) {
+  repositoryPatterns(repositoryId: $repositoryId) {
+    id
+    name
+    type
+    confidence
+    participatingEntityIds
+    detectedAt
+    metadata {
+      patternCharacteristics
+      description
+      violations {
+        type
+        description
+        entityId
+        severity
+      }
+      hasViolations
+      hasCriticalViolations
+    }
+    isHighConfidence
+    participantCount
+    isCreationalPattern
+    isStructuralPattern
+    isBehavioralPattern
+    isArchitecturalPattern
+  }
+}
+
+# Query patterns with filters
+query QueryArchitecturalPatterns($input: PatternQueryInput!) {
+  architecturalPatterns(input: $input) {
+    id
+    name
+    type
+    confidence
+    participantCount
+    hasViolations
+    metadata {
+      description
+      violations {
+        severity
+        description
+      }
+    }
+  }
+}
+
+# Example variables for QueryArchitecturalPatterns:
+# {
+#   "input": {
+#     "repositoryIds": ["repository-guid-here"],
+#     "patternTypes": ["REPOSITORY", "MVC", "SINGLETON"],
+#     "minimumConfidence": 0.7,
+#     "includeViolations": false
+#   }
+# }
+
+# ================================================================
+# 5. REPOSITORY KNOWLEDGE GRAPH FIELDS
+# ================================================================
+
+# Get repository with knowledge graph information
+query GetRepositoryWithKnowledgeGraph($repositoryId: ID!) {
+  repository(id: $repositoryId) {
+    id
+    name
+    url
+    language
+    status
+    
+    # Knowledge Graph Fields
+    hasKnowledgeGraph
+    complexityScore
+    architecturalHealth
+    
+    knowledgeGraph {
+      id
+      status
+      statistics {
+        totalEntities
+        totalRelationships
+        detectedPatterns
+      }
+    }
+    
+    codeEntities(type: CLASS, limit: 10) {
+      id
+      name
+      type
+      complexityScore
+    }
+    
+    architecturalPatterns {
+      id
+      name
+      type
+      confidence
+      participantCount
+    }
+  }
+}
+
+# ================================================================
+# 6. ANALYSIS AND STATISTICS QUERIES
+# ================================================================
+
+# Get entity type distribution
+query GetEntityTypeDistribution($repositoryId: ID) {
+  entityTypeDistribution(repositoryId: $repositoryId)
+}
+
+# Get relationship type distribution
+query GetRelationshipTypeDistribution($repositoryId: ID) {
+  relationshipTypeDistribution(repositoryId: $repositoryId)
+}
+
+# ================================================================
+# 7. MUTATION OPERATIONS
+# ================================================================
+
+# Build a new knowledge graph
+mutation BuildKnowledgeGraph($input: BuildKnowledgeGraphInput!) {
+  buildKnowledgeGraph(input: $input) {
+    id
+    status
+    repositoryIds
+    statistics {
+      totalEntities
+      totalRelationships
+      detectedPatterns
+    }
+    metadata {
+      analysisDepth
+      includePatterns
+    }
+  }
+}
+
+# Example variables for BuildKnowledgeGraph:
+# {
+#   "input": {
+#     "repositoryIds": ["repository-guid-here"],
+#     "includePatterns": true,
+#     "includeCrossRepository": false,
+#     "analysisDepth": "STANDARD"
+#   }
+# }
+
+# Update an existing knowledge graph
+mutation UpdateKnowledgeGraph($id: ID!) {
+  updateKnowledgeGraph(id: $id) {
+    id
+    status
+    statistics {
+      totalEntities
+      totalRelationships
+      detectedPatterns
+      lastAnalysis
+    }
+  }
+}
+
+# Delete a knowledge graph
+mutation DeleteKnowledgeGraph($id: ID!) {
+  deleteKnowledgeGraph(id: $id)
+}
+
+# Analyze entity relationships
+mutation AnalyzeEntityRelationships($entityId: String!) {
+  analyzeEntityRelationships(entityId: $entityId) {
+    id
+    sourceEntityId
+    targetEntityId
+    type
+    weight
+    metadata {
+      confidence
+      detectionMethod
+    }
+  }
+}
+
+# Delete repository graph data
+mutation DeleteRepositoryGraphData($repositoryId: ID!) {
+  deleteRepositoryGraphData(repositoryId: $repositoryId)
+}
+
+# ================================================================
+# 8. COMPLEX ANALYSIS QUERIES
+# ================================================================
+
+# Comprehensive repository analysis
+query ComprehensiveRepositoryAnalysis($repositoryId: ID!) {
+  repository(id: $repositoryId) {
+    id
+    name
+    language
+    
+    # Basic stats
+    statistics {
+      fileCount
+      lineCount
+      languageBreakdown {
+        language
+        percentage
+      }
+    }
+    
+    # Knowledge graph analysis
+    hasKnowledgeGraph
+    complexityScore
+    architecturalHealth
+    
+    # Code entities breakdown
+    codeEntities(limit: 100) {
+      type
+      complexityScore
+      metadata {
+        namespace
+        accessModifier
+      }
+    }
+    
+    # Detected patterns
+    architecturalPatterns {
+      name
+      type
+      confidence
+      hasViolations
+      metadata {
+        violations {
+          severity
+          description
+        }
+      }
+    }
+    
+    # Knowledge graph details
+    knowledgeGraph {
+      status
+      statistics {
+        totalEntities
+        totalRelationships
+        detectedPatterns
+        entityTypeDistribution
+        relationshipTypeDistribution
+        patternTypeDistribution
+        averageComplexity
+        lastAnalysis
+      }
+    }
+  }
+}
+
+# ================================================================
+# 9. ERROR TESTING QUERIES
+# ================================================================
+
+# Test with non-existent ID (should return null)
+query TestNonExistentKnowledgeGraph {
+  knowledgeGraph(id: "00000000-0000-0000-0000-000000000000") {
+    id
+    status
+  }
+}
+
+# Test with non-existent entity ID (should return null)
+query TestNonExistentEntity {
+  entity(entityId: "non-existent-entity-id") {
+    id
+    name
+  }
+}
+
+# Test empty search (should return empty array)
+query TestEmptySearch {
+  searchEntities(query: "", limit: 10) {
+    id
+    name
+  }
+}
