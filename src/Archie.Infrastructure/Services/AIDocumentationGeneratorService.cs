@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -11,6 +13,8 @@ using Archie.Application.Interfaces;
 using Archie.Domain.Entities;
 using Archie.Domain.ValueObjects;
 using Archie.Infrastructure.Configuration;
+using Archie.Infrastructure.AzureSearch.Interfaces;
+using Archie.Infrastructure.AzureSearch.Models;
 
 namespace Archie.Infrastructure.Services;
 
@@ -22,7 +26,7 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
 {
     private readonly AzureOpenAIClient _openAIClient;
     private readonly DocumentationGenerationSettings _options;
-    private readonly IRepositoryAnalysisService _repositoryAnalysisService;
+    private readonly IAzureSearchService _azureSearchService;
     private readonly IRepositoryRepository _repositoryRepository;
     private readonly ILogger<AIDocumentationGeneratorService> _logger;
     private readonly SemaphoreSlim _rateLimitSemaphore;
@@ -32,19 +36,22 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
 
     public AIDocumentationGeneratorService(
         IOptions<DocumentationGenerationSettings> options,
-        IRepositoryAnalysisService repositoryAnalysisService,
+        IAzureSearchService azureSearchService,
         IRepositoryRepository repositoryRepository,
         ILogger<AIDocumentationGeneratorService> logger)
     {
         _options = options.Value;
-        _repositoryAnalysisService = repositoryAnalysisService ?? throw new ArgumentNullException(nameof(repositoryAnalysisService));
+        _azureSearchService = azureSearchService ?? throw new ArgumentNullException(nameof(azureSearchService));
         _repositoryRepository = repositoryRepository ?? throw new ArgumentNullException(nameof(repositoryRepository));
         _logger = logger;
 
         var endpoint = new Uri(_options.AzureOpenAIEndpoint);
         var credential = new AzureKeyCredential(_options.AzureOpenAIApiKey);
         
-        _openAIClient = new AzureOpenAIClient(endpoint, credential);
+        // Use default client options - let SDK handle retries without NetworkTimeout override
+        var clientOptions = new AzureOpenAIClientOptions();
+        
+        _openAIClient = new AzureOpenAIClient(endpoint, credential, clientOptions);
         
         // Initialize rate limiting
         _rateLimitSemaphore = new SemaphoreSlim(_options.MaxConcurrentGenerations, _options.MaxConcurrentGenerations);
@@ -68,22 +75,20 @@ public class AIDocumentationGeneratorService : IAIDocumentationGeneratorService
                 throw new InvalidOperationException($"Repository {repositoryId} not found");
             }
 
-            // Perform repository analysis
-            var analysisContext = await _repositoryAnalysisService.AnalyzeRepositoryAsync(repositoryId, cancellationToken);
+            // Build repository analysis context from indexed Azure Search documents
+            var analysisContext = await BuildAnalysisContextFromIndexedDocumentsAsync(repository, cancellationToken);
             
             // Validate repository analysis results to prevent AI hallucination
             if (analysisContext.ImportantFiles == null || !analysisContext.ImportantFiles.Any())
             {
-                var errorMessage = analysisContext.Structure.ProjectType.Contains("Empty") 
-                    ? "Repository appears to be empty or inaccessible. Cannot generate meaningful documentation without repository content."
-                    : "Repository analysis returned no files. This may indicate API issues or access problems.";
+                var errorMessage = "No indexed documents found for repository. Ensure repository has been indexed first.";
                 
                 _logger.LogError("Cannot generate documentation for repository {RepositoryId}: {Error}", repositoryId, errorMessage);
                 throw new InvalidOperationException($"Documentation generation failed for repository {repositoryId}: {errorMessage}");
             }
             
-            _logger.LogInformation("Repository analysis completed for {RepositoryId}: Found {FileCount} important files, {DependencyCount} dependencies", 
-                repositoryId, analysisContext.ImportantFiles.Count, analysisContext.Dependencies.Count);
+            _logger.LogInformation("Repository analysis completed from indexed documents for {RepositoryId}: Found {FileCount} important files", 
+                repositoryId, analysisContext.ImportantFiles.Count);
             
             // Create documentation metadata
             var metadata = new DocumentationMetadata(
@@ -447,7 +452,7 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
             _logger.LogError("Azure OpenAI service failed to return content after {RetryAttempts} attempts", _options.RetryAttempts);
             throw new InvalidOperationException($"Azure OpenAI service is currently unavailable. Please try again later. (Failed after {_options.RetryAttempts} retry attempts)");
         }
-        catch (RequestFailedException ex) when (!IsRetryableError(ex))
+        catch (RequestFailedException ex) when (!IsRetryableException(ex))
         {
             // Handle non-retryable errors (4xx client errors)
             _logger.LogError(ex, "Azure OpenAI request failed with non-retryable error: {ErrorCode}", ex.ErrorCode);
@@ -767,12 +772,12 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
             {
                 return await operation();
             }
-            catch (RequestFailedException ex) when (IsRetryableError(ex) && attempt < _options.RetryAttempts)
+            catch (Exception ex) when (IsRetryableException(ex) && attempt < _options.RetryAttempts)
             {
                 var delayMs = CalculateExponentialBackoffDelay(attempt);
                 
-                _logger.LogWarning("Azure OpenAI request failed (attempt {Attempt}/{MaxAttempts}), retrying in {DelayMs}ms: {ErrorCode} - {Message}",
-                    attempt, _options.RetryAttempts, delayMs, ex.ErrorCode, ex.Message);
+                _logger.LogWarning("Azure OpenAI request failed (attempt {Attempt}/{MaxAttempts}), retrying in {DelayMs}ms: {ExceptionType} - {Message}",
+                    attempt, _options.RetryAttempts, delayMs, ex.GetType().Name, ex.Message);
                 
                 await Task.Delay(delayMs, cancellationToken);
             }
@@ -781,9 +786,19 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
         return null;
     }
 
-    private static bool IsRetryableError(RequestFailedException ex)
+    private static bool IsRetryableException(Exception ex)
     {
-        return ex.Status is 429 or 408 or >= 500;
+        return ex switch
+        {
+            RequestFailedException reqEx => reqEx.Status is 429 or 408 or >= 500,
+            TaskCanceledException => false, // Don't retry cancellations
+            OperationCanceledException => false, // Don't retry cancellations
+            HttpRequestException => true, // Retry HTTP issues
+            SocketException => true, // Retry network issues
+            IOException => true, // Retry I/O issues
+            TimeoutException => true, // Retry timeouts
+            _ => false
+        };
     }
 
     private static int CalculateExponentialBackoffDelay(int attempt)
@@ -1041,6 +1056,435 @@ Keep the enhanced content under {_options.MaxTokensPerSection} tokens and mainta
                 "Show installation steps and a simple example command to demonstrate basic functionality.",
             _ => "Focus on command-line workflows and automation provided by this tool."
         };
+    }
+
+    #endregion
+
+    #region Azure Search Integration Methods
+
+    /// <summary>
+    /// Build repository analysis context from indexed Azure Search documents instead of fresh GitHub API calls
+    /// </summary>
+    private async Task<RepositoryAnalysisContext> BuildAnalysisContextFromIndexedDocumentsAsync(
+        Repository repository, 
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Building analysis context from indexed documents for repository: {RepositoryId}", repository.Id);
+
+        // Search for all documents in this repository
+        var searchQuery = SearchQuery.Create("*")
+            .WithFilters(SearchFilter.Equal("repository_id", repository.Id.ToString()))
+            .WithPaging(1000); // Get all documents
+
+        var searchResults = await _azureSearchService.SearchAsync(searchQuery, cancellationToken);
+        
+        if (searchResults?.Results == null || !searchResults.Results.Any())
+        {
+            _logger.LogWarning("No indexed documents found for repository: {RepositoryId}", repository.Id);
+            throw new InvalidOperationException($"No indexed documents found for repository {repository.Id}. Ensure repository has been indexed first.");
+        }
+
+        var documents = searchResults.Results.Select(r => r.Document).ToList();
+        
+        _logger.LogInformation("Found {DocumentCount} indexed documents for repository: {RepositoryId}", 
+            documents.Count, repository.Id);
+
+        // Build analysis context from indexed documents
+        var context = new RepositoryAnalysisContext
+        {
+            RepositoryId = repository.Id,
+            RepositoryName = repository.Name,
+            RepositoryUrl = repository.Url,
+            PrimaryLanguage = repository.Language,
+            AnalyzedAt = DateTime.UtcNow
+        };
+
+        // Convert SearchableDocuments to FileAnalysis objects
+        context.ImportantFiles = documents
+            .Where(doc => !string.IsNullOrWhiteSpace(doc.Content))
+            .OrderByDescending(doc => doc.SizeInBytes) // Prioritize larger files
+            .Take(50) // Limit to most important files
+            .Select(doc => new FileAnalysis
+            {
+                FilePath = doc.FilePath,
+                FileType = doc.FileExtension,
+                Language = doc.Language,
+                LineCount = doc.LineCount,
+                Content = doc.Content,
+                KeyConcepts = ExtractKeyConceptsFromContent(doc.Content, doc.Language),
+                Purpose = DetermineFunctionPurpose(doc.Content, doc.FilePath),
+                ImportanceScore = CalculateFileImportanceScore(doc.FilePath, doc.Content)
+            })
+            .ToList();
+
+        // Extract languages from indexed documents
+        context.Languages = documents
+            .Where(doc => !string.IsNullOrWhiteSpace(doc.Language))
+            .Select(doc => doc.Language)
+            .Distinct()
+            .ToList();
+
+        // Build project structure analysis from file paths
+        context.Structure = BuildProjectStructureFromFilePaths(documents);
+
+        // Extract dependencies from content (simplified)
+        context.Dependencies = ExtractDependenciesFromContent(documents);
+
+        // Set basic architectural patterns (simplified)
+        context.Patterns = new ArchitecturalPatterns();
+
+        // Enhanced content analysis properties (simplified from indexed content)
+        context.Purpose = ExtractProjectPurposeFromIndexedContent(documents);
+        context.ComponentMap = new ComponentRelationshipMap();
+        context.ContentSummaries = CreateContentSummariesFromIndexedDocuments(documents);
+
+        _logger.LogInformation("Built analysis context with {FileCount} files, {LanguageCount} languages for repository: {RepositoryId}", 
+            context.ImportantFiles.Count, context.Languages.Count, repository.Id);
+
+        return context;
+    }
+
+    /// <summary>
+    /// Extract key concepts from file content using simple heuristics
+    /// </summary>
+    private List<string> ExtractKeyConceptsFromContent(string content, string language)
+    {
+        var concepts = new List<string>();
+        
+        if (string.IsNullOrWhiteSpace(content)) return concepts;
+
+        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines.Take(20)) // Only check first 20 lines
+        {
+            var trimmedLine = line.Trim();
+            
+            // Language-specific concept extraction
+            if (language.Equals("csharp", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmedLine.StartsWith("public class ") || trimmedLine.StartsWith("class "))
+                    concepts.Add("Class Definition");
+                if (trimmedLine.StartsWith("public interface ") || trimmedLine.StartsWith("interface "))
+                    concepts.Add("Interface Definition");
+                if (trimmedLine.Contains("async ") || trimmedLine.Contains("Task"))
+                    concepts.Add("Async Programming");
+            }
+            else if (language.Equals("javascript", StringComparison.OrdinalIgnoreCase) || 
+                     language.Equals("typescript", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmedLine.StartsWith("function ") || trimmedLine.Contains(" => "))
+                    concepts.Add("Function Definition");
+                if (trimmedLine.Contains("async ") || trimmedLine.Contains("await "))
+                    concepts.Add("Async Programming");
+            }
+        }
+
+        return concepts.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Determine file purpose from content and path
+    /// </summary>
+    private string DetermineFunctionPurpose(string content, string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return "Configuration or data file";
+
+        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        
+        // Determine purpose from filename patterns
+        if (fileName.Contains("test") || fileName.Contains("spec"))
+            return "Test file";
+        if (fileName.Contains("config") || fileName.Contains("setting"))
+            return "Configuration file";
+        if (fileName.Equals("readme.md") || fileName.Equals("readme.txt"))
+            return "Documentation file";
+        if (fileName.Contains("service") || fileName.Contains("repository"))
+            return "Service layer implementation";
+        if (fileName.Contains("controller") || fileName.Contains("api"))
+            return "API layer implementation";
+        if (fileName.Contains("model") || fileName.Contains("entity"))
+            return "Data model definition";
+
+        // Determine from content patterns
+        if (content.Contains("class ") || content.Contains("interface "))
+            return "Core application logic";
+        if (content.Contains("function ") || content.Contains("def "))
+            return "Utility functions";
+
+        return "Application component";
+    }
+
+    /// <summary>
+    /// Calculate file importance score based on path and content
+    /// </summary>
+    private double CalculateFileImportanceScore(string filePath, string content)
+    {
+        double score = 0.5; // Base score
+        
+        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        var directory = Path.GetDirectoryName(filePath)?.ToLowerInvariant() ?? "";
+        
+        // Boost score for important files
+        if (fileName.Equals("readme.md") || fileName.Equals("readme.txt")) score += 0.4;
+        if (fileName.Contains("main") || fileName.Contains("index") || fileName.Contains("app")) score += 0.3;
+        if (directory.Contains("src") || directory.Contains("lib")) score += 0.2;
+        if (fileName.EndsWith(".cs") || fileName.EndsWith(".js") || fileName.EndsWith(".ts")) score += 0.1;
+        
+        // Reduce score for less important files
+        if (fileName.Contains("test") || fileName.Contains("spec")) score -= 0.2;
+        if (directory.Contains("node_modules") || directory.Contains("bin") || directory.Contains("obj")) score -= 0.4;
+        
+        // Content-based scoring
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            var lineCount = content.Split('\n').Length;
+            if (lineCount > 100) score += 0.1;
+            if (lineCount > 500) score += 0.1;
+        }
+        
+        return Math.Max(0.0, Math.Min(1.0, score)); // Clamp between 0 and 1
+    }
+
+    /// <summary>
+    /// Build project structure analysis from file paths
+    /// </summary>
+    private ProjectStructureAnalysis BuildProjectStructureFromFilePaths(List<SearchableDocument> documents)
+    {
+        var structure = new ProjectStructureAnalysis();
+        
+        var allPaths = documents.Select(d => d.FilePath).ToList();
+        var extensions = documents.Select(d => d.FileExtension).Where(e => !string.IsNullOrWhiteSpace(e)).Distinct().ToList();
+        var languages = documents.Select(d => d.Language).Where(l => !string.IsNullOrWhiteSpace(l)).Distinct().ToList();
+        
+        // Determine project type from file patterns
+        if (allPaths.Any(p => p.Contains("package.json"))) structure.ProjectType = "Node.js Application";
+        else if (extensions.Any(e => e.Equals(".csproj") || e.Equals(".sln"))) structure.ProjectType = ".NET Application";
+        else if (extensions.Contains(".py") && allPaths.Any(p => p.Contains("requirements.txt"))) structure.ProjectType = "Python Application";
+        else if (extensions.Contains(".java") && allPaths.Any(p => p.Contains("pom.xml"))) structure.ProjectType = "Java Application";
+        else structure.ProjectType = "Application";
+        
+        // Extract frameworks from file contents (simplified)
+        structure.Frameworks = ExtractFrameworksFromDocuments(documents);
+        
+        return structure;
+    }
+
+    /// <summary>
+    /// Extract frameworks from document contents
+    /// </summary>
+    private List<string> ExtractFrameworksFromDocuments(List<SearchableDocument> documents)
+    {
+        var frameworks = new HashSet<string>();
+        
+        foreach (var doc in documents.Take(10)) // Check first 10 documents
+        {
+            if (string.IsNullOrWhiteSpace(doc.Content)) continue;
+            
+            var content = doc.Content.ToLowerInvariant();
+            
+            // .NET frameworks
+            if (content.Contains("asp.net") || content.Contains("aspnetcore")) frameworks.Add("ASP.NET Core");
+            if (content.Contains("entity framework") || content.Contains("entityframework")) frameworks.Add("Entity Framework");
+            if (content.Contains("blazor")) frameworks.Add("Blazor");
+            
+            // JavaScript frameworks
+            if (content.Contains("react")) frameworks.Add("React");
+            if (content.Contains("angular")) frameworks.Add("Angular");
+            if (content.Contains("vue")) frameworks.Add("Vue.js");
+            if (content.Contains("express")) frameworks.Add("Express.js");
+            if (content.Contains("next.js") || content.Contains("nextjs")) frameworks.Add("Next.js");
+            
+            // Python frameworks
+            if (content.Contains("django")) frameworks.Add("Django");
+            if (content.Contains("flask")) frameworks.Add("Flask");
+            if (content.Contains("fastapi")) frameworks.Add("FastAPI");
+        }
+        
+        return frameworks.ToList();
+    }
+
+    /// <summary>
+    /// Extract dependencies from document contents (simplified)
+    /// </summary>
+    private List<DependencyInfo> ExtractDependenciesFromContent(List<SearchableDocument> documents)
+    {
+        var dependencies = new List<DependencyInfo>();
+        
+        // Look for package.json, requirements.txt, .csproj files
+        var packageFiles = documents.Where(d => 
+            d.FileName.Equals("package.json", StringComparison.OrdinalIgnoreCase) ||
+            d.FileName.Equals("requirements.txt", StringComparison.OrdinalIgnoreCase) ||
+            d.FileExtension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+        ).ToList();
+        
+        foreach (var packageFile in packageFiles)
+        {
+            if (string.IsNullOrWhiteSpace(packageFile.Content)) continue;
+            
+            // Simple dependency extraction (could be enhanced)
+            var lines = packageFile.Content.Split('\n');
+            foreach (var line in lines.Take(50)) // Limit to prevent processing large files
+            {
+                var trimmedLine = line.Trim();
+                if (trimmedLine.Contains('"') && trimmedLine.Contains(':'))
+                {
+                    // Extract package name (simplified)
+                    var packageName = trimmedLine.Split('"').FirstOrDefault(s => !string.IsNullOrWhiteSpace(s) && !s.Contains(':'));
+                    if (!string.IsNullOrWhiteSpace(packageName) && packageName.Length < 50)
+                    {
+                        dependencies.Add(new DependencyInfo 
+                        { 
+                            Name = packageName, 
+                            Version = "Unknown",
+                            Type = "Package"
+                        });
+                    }
+                }
+            }
+        }
+        
+        return dependencies.Take(20).ToList(); // Limit to prevent too many dependencies
+    }
+
+    /// <summary>
+    /// Extract project purpose from indexed content (simplified)
+    /// </summary>
+    private ProjectPurpose ExtractProjectPurposeFromIndexedContent(List<SearchableDocument> documents)
+    {
+        var purpose = new ProjectPurpose();
+        
+        // Look for README file
+        var readmeDoc = documents.FirstOrDefault(d => 
+            d.FileName.Equals("readme.md", StringComparison.OrdinalIgnoreCase) ||
+            d.FileName.Equals("readme.txt", StringComparison.OrdinalIgnoreCase));
+        
+        if (readmeDoc != null && !string.IsNullOrWhiteSpace(readmeDoc.Content))
+        {
+            // Extract first paragraph as description
+            var lines = readmeDoc.Content.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l.Trim())).ToArray();
+            if (lines.Any())
+            {
+                purpose.Description = lines.First().Trim().Replace("#", "").Trim();
+            }
+        }
+        
+        // Set default values if not found
+        if (string.IsNullOrWhiteSpace(purpose.Description))
+        {
+            purpose.Description = "Software application with multiple components";
+        }
+        
+        return purpose;
+    }
+
+    /// <summary>
+    /// Create content summaries from indexed documents
+    /// </summary>
+    private List<ContentSummary> CreateContentSummariesFromIndexedDocuments(List<SearchableDocument> documents)
+    {
+        var summaries = new List<ContentSummary>();
+        
+        // Create summaries for important files
+        var importantDocs = documents
+            .Where(d => !string.IsNullOrWhiteSpace(d.Content) && d.SizeInBytes > 100)
+            .OrderByDescending(d => d.SizeInBytes)
+            .Take(10)
+            .ToList();
+        
+        foreach (var doc in importantDocs)
+        {
+            var summary = new ContentSummary
+            {
+                FilePath = doc.FilePath,
+                Language = doc.Language,
+                FunctionalityDescription = GenerateSimpleSummary(doc.Content, doc.Language),
+                LinesOfCode = doc.LineCount,
+                ComplexityScore = CalculateFileImportanceScore(doc.FilePath, doc.Content),
+                ContentType = DetermineContentType(doc.FileExtension),
+                CodeSnippet = ExtractCodeSnippet(doc.Content)
+            };
+            
+            // Add key concepts as key functions
+            var keyConcepts = ExtractKeyConceptsFromContent(doc.Content, doc.Language);
+            foreach (var concept in keyConcepts)
+            {
+                summary.AddKeyFunction(concept);
+            }
+            
+            summaries.Add(summary);
+        }
+        
+        return summaries;
+    }
+
+    /// <summary>
+    /// Generate a simple summary from content
+    /// </summary>
+    private string GenerateSimpleSummary(string content, string language)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return "Empty file";
+        
+        var lines = content.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l.Trim())).ToArray();
+        var lineCount = lines.Length;
+        
+        var summary = $"{language} file with {lineCount} lines";
+        
+        // Add specific details based on content patterns
+        if (content.Contains("class ")) summary += ", contains class definitions";
+        if (content.Contains("function ") || content.Contains("def ")) summary += ", contains function definitions";
+        if (content.Contains("import ") || content.Contains("using ")) summary += ", includes dependencies";
+        
+        return summary;
+    }
+
+    /// <summary>
+    /// Determine content type from file extension
+    /// </summary>
+    private ContentType DetermineContentType(string extension)
+    {
+        return extension.ToLowerInvariant() switch
+        {
+            ".cs" or ".js" or ".ts" or ".py" or ".java" or ".cpp" or ".c" or ".go" or ".rs" => ContentType.SourceCode,
+            ".json" or ".xml" or ".yml" or ".yaml" or ".config" or ".ini" => ContentType.Configuration,
+            ".md" or ".txt" or ".rst" => ContentType.Documentation,
+            ".test.js" or ".test.ts" or ".spec.js" or ".spec.ts" => ContentType.Test,
+            ".html" or ".htm" => ContentType.Markup,
+            ".css" or ".scss" or ".less" => ContentType.Style,
+            ".sql" or ".csv" => ContentType.Data,
+            ".sh" or ".ps1" or ".bat" => ContentType.Script,
+            _ => ContentType.SourceCode
+        };
+    }
+
+    /// <summary>
+    /// Extract a representative code snippet from content
+    /// </summary>
+    private string ExtractCodeSnippet(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return "";
+        
+        var lines = content.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l.Trim())).ToArray();
+        if (!lines.Any()) return "";
+        
+        // Find the most interesting lines (class definitions, functions, etc.)
+        var interestingLines = lines.Where(l => 
+            l.Trim().StartsWith("class ") ||
+            l.Trim().StartsWith("public class ") ||
+            l.Trim().StartsWith("function ") ||
+            l.Trim().StartsWith("public ") ||
+            l.Trim().StartsWith("private ") ||
+            l.Trim().StartsWith("def ") ||
+            l.Trim().StartsWith("interface ") ||
+            l.Trim().StartsWith("export ")
+        ).Take(3).ToArray();
+        
+        if (interestingLines.Any())
+        {
+            return string.Join("\n", interestingLines);
+        }
+        
+        // Fall back to first few non-empty lines
+        return string.Join("\n", lines.Take(3));
     }
 
     #endregion

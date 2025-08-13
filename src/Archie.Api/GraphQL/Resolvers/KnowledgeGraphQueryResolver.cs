@@ -6,7 +6,7 @@ using Archie.Api.GraphQL.Types;
 
 namespace Archie.Api.GraphQL.Resolvers;
 
-[ExtendObjectType<Query>]
+[ExtendObjectType(typeof(Query))]
 public class KnowledgeGraphQueryResolver
 {
     private readonly IGraphStorageService _graphStorageService;

@@ -81,6 +81,8 @@ public class FileContentProcessor
             var metadata = CreateDocumentMetadata(repository, codeSymbols);
 
             // 6. Create and return the searchable document
+            _logger.LogError("DEBUG: Repository ID in FileContentProcessor: {RepositoryId} (Type: {Type})", 
+                repository.Id, repository.Id.GetType().Name);
             var document = SearchableDocument.Create(
                 repository.Id,
                 filePath,

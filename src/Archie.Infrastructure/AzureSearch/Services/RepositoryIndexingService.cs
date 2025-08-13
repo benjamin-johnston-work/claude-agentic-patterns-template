@@ -194,87 +194,173 @@ public class RepositoryIndexingService : IRepositoryIndexingService
     {
         try
         {
+            _logger.LogInformation("WORKFLOW STEP 1: Starting ExecuteIndexingWorkflow for repository {RepositoryId} ({Owner}/{Name})", 
+                repository.Id, repository.Owner, repository.Name);
+
             // Step 1: Remove existing documents if force reindex
             if (forceReindex)
             {
-                _logger.LogInformation("Force reindex requested, removing existing documents for repository {RepositoryId}", 
+                _logger.LogInformation("WORKFLOW STEP 1A: Force reindex requested, removing existing documents for repository {RepositoryId}", 
                     repository.Id);
                 
-                await _searchService.DeleteRepositoryDocumentsAsync(repository.Id, cancellationToken);
+                try
+                {
+                    await _searchService.DeleteRepositoryDocumentsAsync(repository.Id, cancellationToken);
+                    _logger.LogInformation("WORKFLOW STEP 1A: Successfully deleted existing documents for repository {RepositoryId}", repository.Id);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogError(deleteEx, "WORKFLOW STEP 1A: Failed to delete existing documents for repository {RepositoryId}", repository.Id);
+                    throw;
+                }
             }
 
             // Step 2: Get repository file tree
-            _logger.LogDebug("Fetching repository tree for {Owner}/{Name}", repository.Owner, repository.Name);
+            _logger.LogInformation("WORKFLOW STEP 2: Fetching repository tree for {Owner}/{Name}", repository.Owner, repository.Name);
             
-            var fileTree = await _gitHubService.GetRepositoryTreeAsync(
-                repository.Owner, 
-                repository.Name, 
-                repository.DefaultBranch, 
-                recursive: true);
+            List<string> fileTree;
+            try
+            {
+                fileTree = await _gitHubService.GetRepositoryTreeAsync(
+                    repository.Owner, 
+                    repository.Name, 
+                    repository.DefaultBranch, 
+                    recursive: true);
+                    
+                _logger.LogInformation("WORKFLOW STEP 2: Successfully fetched repository tree with {FileCount} files for {Owner}/{Name}", 
+                    fileTree.Count, repository.Owner, repository.Name);
+            }
+            catch (Exception githubEx)
+            {
+                _logger.LogError(githubEx, "WORKFLOW STEP 2: Failed to fetch repository tree for {Owner}/{Name} - {ExceptionType}: {Message}", 
+                    repository.Owner, repository.Name, githubEx.GetType().Name, githubEx.Message);
+                return CreateErrorStatus(repository.Id, $"GitHub API error: {githubEx.Message}");
+            }
 
             // Step 3: Filter indexable files
+            _logger.LogInformation("WORKFLOW STEP 3: Filtering indexable files from {TotalFileCount} files", fileTree.Count);
+            
             var indexableFiles = FilterIndexableFiles(fileTree);
             status.TotalDocuments = indexableFiles.Count;
             
-            _logger.LogInformation("Found {IndexableFileCount} indexable files out of {TotalFileCount} total files",
+            _logger.LogInformation("WORKFLOW STEP 3: Found {IndexableFileCount} indexable files out of {TotalFileCount} total files",
                 indexableFiles.Count, fileTree.Count);
+
+            if (indexableFiles.Count == 0)
+            {
+                _logger.LogWarning("WORKFLOW STEP 3: No indexable files found for repository {RepositoryId}", repository.Id);
+                return CreateErrorStatus(repository.Id, "No indexable files found in repository");
+            }
 
             UpdateIndexingStatus(repository.Id, status);
 
             // Step 4: Process files in batches
+            _logger.LogInformation("WORKFLOW STEP 4: Starting batch processing of {IndexableFileCount} files", indexableFiles.Count);
+            
             var documents = new List<SearchableDocument>();
             var processedBatches = 0;
             var totalBatches = (int)Math.Ceiling((double)indexableFiles.Count / _indexingOptions.MaxConcurrentIndexingOperations);
+            
+            _logger.LogInformation("WORKFLOW STEP 4: Will process {TotalBatches} batches with max {MaxConcurrent} concurrent operations", 
+                totalBatches, _indexingOptions.MaxConcurrentIndexingOperations);
 
             foreach (var fileBatch in indexableFiles.Chunk(_indexingOptions.MaxConcurrentIndexingOperations))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                _logger.LogDebug("Processing batch {BatchNumber}/{TotalBatches} ({FileCount} files)",
-                    ++processedBatches, totalBatches, fileBatch.Length);
+                _logger.LogInformation("WORKFLOW STEP 4.{BatchNumber}: Processing batch {BatchNumber}/{TotalBatches} ({FileCount} files)",
+                    ++processedBatches, processedBatches, totalBatches, fileBatch.Length);
 
-                // Get file contents for the batch
-                var fileContents = await GetFileContentsAsync(
-                    repository.Owner, 
-                    repository.Name, 
-                    repository.DefaultBranch,
-                    fileBatch, 
-                    cancellationToken);
-
-                // Process files to create searchable documents
-                var batchDocuments = await _fileProcessor.ProcessFilesAsync(
-                    repository, 
-                    fileContents, 
-                    repository.DefaultBranch, 
-                    cancellationToken);
-
-                documents.AddRange(batchDocuments);
-
-                // Update progress
-                status.DocumentsIndexed = documents.Count;
-                status.EstimatedCompletion = EstimateCompletion(processedBatches, totalBatches, DateTime.UtcNow);
-                UpdateIndexingStatus(repository.Id, status);
-
-                _logger.LogDebug("Batch {BatchNumber} completed. Processed {BatchDocuments} documents. " +
-                    "Total: {TotalDocuments}/{ExpectedTotal}",
-                    processedBatches, batchDocuments.Count, documents.Count, status.TotalDocuments);
-            }
-
-            // Step 5: Index all documents in Azure AI Search
-            if (documents.Any())
-            {
-                _logger.LogInformation("Indexing {DocumentCount} documents in Azure AI Search", documents.Count);
-                
-                var indexSuccess = await _searchService.IndexDocumentsAsync(documents, cancellationToken);
-                
-                if (!indexSuccess)
+                try
                 {
-                    _logger.LogError("Failed to index documents for repository {RepositoryId}", repository.Id);
-                    return CreateErrorStatus(repository.Id, "Failed to index documents in Azure AI Search");
+                    // Get file contents for the batch
+                    _logger.LogDebug("WORKFLOW STEP 4.{BatchNumber}A: Fetching file contents for {FileCount} files", processedBatches, fileBatch.Length);
+                    
+                    var fileContents = await GetFileContentsAsync(
+                        repository.Owner, 
+                        repository.Name, 
+                        repository.DefaultBranch,
+                        fileBatch, 
+                        cancellationToken);
+
+                    _logger.LogInformation("WORKFLOW STEP 4.{BatchNumber}A: Successfully fetched {ContentCount} file contents out of {RequestedCount}",
+                        processedBatches, fileContents.Count, fileBatch.Length);
+
+                    if (fileContents.Count == 0)
+                    {
+                        _logger.LogWarning("WORKFLOW STEP 4.{BatchNumber}A: No file contents retrieved for batch", processedBatches);
+                        continue;
+                    }
+
+                    // Process files to create searchable documents
+                    _logger.LogDebug("WORKFLOW STEP 4.{BatchNumber}B: Processing {FileCount} files through FileContentProcessor", processedBatches, fileContents.Count);
+                    
+                    var batchDocuments = await _fileProcessor.ProcessFilesAsync(
+                        repository, 
+                        fileContents, 
+                        repository.DefaultBranch, 
+                        cancellationToken);
+
+                    _logger.LogInformation("WORKFLOW STEP 4.{BatchNumber}B: FileProcessor created {DocumentCount} searchable documents from {FileCount} files",
+                        processedBatches, batchDocuments.Count, fileContents.Count);
+
+                    documents.AddRange(batchDocuments);
+                    
+                    // Update progress
+                    status.DocumentsIndexed = documents.Count;
+                    status.EstimatedCompletion = EstimateCompletion(processedBatches, totalBatches, DateTime.UtcNow);
+                    UpdateIndexingStatus(repository.Id, status);
+
+                    _logger.LogInformation("WORKFLOW STEP 4.{BatchNumber}: Batch completed. Processed {BatchDocuments} documents. " +
+                        "Total: {TotalDocuments}/{ExpectedTotal}",
+                        processedBatches, batchDocuments.Count, documents.Count, status.TotalDocuments);
+                }
+                catch (Exception batchEx)
+                {
+                    _logger.LogError(batchEx, "WORKFLOW STEP 4.{BatchNumber}: Failed to process batch - {ExceptionType}: {Message}",
+                        processedBatches, batchEx.GetType().Name, batchEx.Message);
+                    
+                    // Continue with other batches instead of failing completely
+                    continue;
                 }
             }
 
+            // Step 5: Index all documents in Azure AI Search
+            _logger.LogInformation("WORKFLOW STEP 5: Preparing to index {DocumentCount} total documents in Azure AI Search", documents.Count);
+            
+            if (documents.Any())
+            {
+                try
+                {
+                    _logger.LogInformation("WORKFLOW STEP 5: Uploading {DocumentCount} documents to Azure AI Search", documents.Count);
+                    
+                    var indexSuccess = await _searchService.IndexDocumentsAsync(documents, cancellationToken);
+                    
+                    if (!indexSuccess)
+                    {
+                        _logger.LogError("WORKFLOW STEP 5: Azure AI Search IndexDocumentsAsync returned false for repository {RepositoryId}", repository.Id);
+                        return CreateErrorStatus(repository.Id, "Failed to index documents in Azure AI Search - IndexDocumentsAsync returned false");
+                    }
+                    
+                    _logger.LogInformation("WORKFLOW STEP 5: Successfully indexed {DocumentCount} documents in Azure AI Search for repository {RepositoryId}", 
+                        documents.Count, repository.Id);
+                }
+                catch (Exception searchEx)
+                {
+                    _logger.LogError(searchEx, "WORKFLOW STEP 5: Azure AI Search indexing failed for repository {RepositoryId} - {ExceptionType}: {Message}", 
+                        repository.Id, searchEx.GetType().Name, searchEx.Message);
+                    return CreateErrorStatus(repository.Id, $"Azure Search indexing error: {searchEx.Message}");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("WORKFLOW STEP 5: No documents to index for repository {RepositoryId}", repository.Id);
+                return CreateErrorStatus(repository.Id, "No documents were successfully processed for indexing");
+            }
+
             // Step 6: Complete successfully
+            _logger.LogInformation("WORKFLOW STEP 6: Indexing workflow completed successfully for repository {RepositoryId}", repository.Id);
+            
             status.Status = IndexingStatus.COMPLETED;
             status.LastIndexed = DateTime.UtcNow;
             status.EstimatedCompletion = null;

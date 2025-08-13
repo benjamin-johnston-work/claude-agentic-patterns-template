@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Archie.Api.GraphQL.Resolvers;
 
-[ExtendObjectType<Query>]
+[ExtendObjectType(typeof(Query))]
 public class DocumentationQueryResolver
 {
     private readonly ILogger<DocumentationQueryResolver> _logger;
@@ -225,7 +225,14 @@ public class DocumentationQueryResolver
                 AccuracyScore = documentation.Statistics.AccuracyScore,
                 CoveredTopics = documentation.Statistics.CoveredTopics
             },
-            ErrorMessage = documentation.ErrorMessage
+            ErrorMessage = documentation.ErrorMessage,
+            
+            // Populate the missing frontend fields with calculated values
+            TotalSections = documentation.Sections.Count(),
+            EstimatedReadingTime = documentation.Sections.Sum(s => s.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length ?? 0) / 200.0, // 200 words per minute
+            LastGenerated = documentation.GeneratedAt,
+            GenerationDuration = documentation.Statistics.GenerationTime.TotalSeconds,
+            SectionsGenerated = documentation.Sections.Count(s => !string.IsNullOrWhiteSpace(s.Content))
         };
     }
 

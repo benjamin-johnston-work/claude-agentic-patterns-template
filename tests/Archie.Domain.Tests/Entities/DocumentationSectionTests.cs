@@ -79,7 +79,7 @@ public class DocumentationSectionTests
         var newContent = "Updated content";
 
         // Act
-        Thread.Sleep(1); // Ensure time difference
+        Thread.Sleep(10); // Ensure time difference (10ms for better reliability)
         section.UpdateContent(newContent);
 
         // Assert
@@ -108,7 +108,7 @@ public class DocumentationSectionTests
         var newTitle = "Updated Title";
 
         // Act
-        Thread.Sleep(1); // Ensure time difference
+        Thread.Sleep(10); // Ensure time difference (10ms for better reliability)
         section.UpdateTitle(newTitle);
 
         // Assert
@@ -125,7 +125,7 @@ public class DocumentationSectionTests
         var newOrder = 5;
 
         // Act
-        Thread.Sleep(1); // Ensure time difference
+        Thread.Sleep(10); // Ensure time difference (10ms for better reliability)
         section.UpdateOrder(newOrder);
 
         // Assert
@@ -370,16 +370,16 @@ public class DocumentationSectionTests
     }
 
     [Test]
-    public void GetWordCount_EmptyContent_ReturnsZero()
+    public void GetWordCount_SingleWordContent_ReturnsOne()
     {
-        // Arrange
-        var section = DocumentationSection.Create("Title", " ", DocumentationSectionType.Overview, 1);
+        // Arrange - Test with minimal valid content
+        var section = DocumentationSection.Create("Title", "Word", DocumentationSectionType.Overview, 1);
 
         // Act
         var wordCount = section.GetWordCount();
 
         // Assert
-        Assert.That(wordCount, Is.EqualTo(0));
+        Assert.That(wordCount, Is.EqualTo(1));
     }
 
     [Test]

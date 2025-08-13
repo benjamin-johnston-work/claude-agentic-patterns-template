@@ -34,7 +34,11 @@ public class ConversationalAIService : IConversationalAIService
         var endpoint = new Uri(_options.AzureOpenAIEndpoint);
         var credential = new AzureKeyCredential(_options.AzureOpenAIApiKey);
         
-        _openAIClient = new AzureOpenAIClient(endpoint, credential);
+        // Configure client options with timeout
+        var clientOptions = new AzureOpenAIClientOptions();
+        clientOptions.NetworkTimeout = TimeSpan.FromSeconds(_options.RequestTimeoutSeconds);
+        
+        _openAIClient = new AzureOpenAIClient(endpoint, credential, clientOptions);
         _rateLimitSemaphore = new SemaphoreSlim(5, 5); // Limit concurrent requests
     }
 

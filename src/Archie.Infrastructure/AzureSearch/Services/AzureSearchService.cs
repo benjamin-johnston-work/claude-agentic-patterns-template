@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using System.Text.Json;
 using Archie.Infrastructure.AzureSearch.Interfaces;
 using Archie.Infrastructure.AzureSearch.Models;
+using Archie.Infrastructure.AzureSearch.Mappers;
 using Archie.Infrastructure.Configuration;
 
 namespace Archie.Infrastructure.AzureSearch.Services;
@@ -143,6 +144,13 @@ public class AzureSearchService : IAzureSearchService
         {
             var searchDocument = ConvertToSearchDocument(document);
             
+            // Enhanced logging for debugging
+            if (_options.EnableDetailedLogging)
+            {
+                _logger.LogDebug("Attempting to index document {DocumentId} of type {DocumentType} for repository {RepositoryId}", 
+                    document.Id, document.DocumentType, searchDocument.RepositoryId);
+            }
+            
             var batch = IndexDocumentsBatch.Create(
                 IndexDocumentsAction.MergeOrUpload(searchDocument)
             );
@@ -159,13 +167,18 @@ public class AzureSearchService : IAzureSearchService
                 return true;
             }
 
-            _logger.LogError("Failed to index document {DocumentId}: {ErrorMessage}", 
-                document.Id, result?.ErrorMessage);
+            _logger.LogError("Failed to index document {DocumentId} of type {DocumentType}: {ErrorMessage} | Status: {StatusCode}", 
+                document.Id, document.DocumentType, result?.ErrorMessage, result?.Status);
+            
+            // Log the document structure for debugging
+            _logger.LogError("Document structure: {DocumentStructure}", 
+                JsonSerializer.Serialize(searchDocument, new JsonSerializerOptions { WriteIndented = true }));
+            
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error indexing document {DocumentId}", document.Id);
+            _logger.LogError(ex, "Error indexing document {DocumentId} of type {DocumentType}", document.Id, document.DocumentType);
             return false;
         }
     }
@@ -326,22 +339,22 @@ public class AzureSearchService : IAzureSearchService
             var searchOptions = BuildSearchOptions(query);
             var searchText = string.IsNullOrEmpty(query.Query) ? "*" : query.Query;
 
-            SearchResults<SearchableDocument> response;
+            SearchResults<AzureSearchDocumentDto> response;
 
             if (query.SearchType == SearchType.Semantic)
             {
                 // Vector search only
-                response = await _searchClient.SearchAsync<SearchableDocument>(searchText, searchOptions, cancellationToken);
+                response = await _searchClient.SearchAsync<AzureSearchDocumentDto>(searchText, searchOptions, cancellationToken);
             }
             else if (query.SearchType == SearchType.Keyword)
             {
                 // Text search only
-                response = await _searchClient.SearchAsync<SearchableDocument>(searchText, searchOptions, cancellationToken);
+                response = await _searchClient.SearchAsync<AzureSearchDocumentDto>(searchText, searchOptions, cancellationToken);
             }
             else // Hybrid search (default)
             {
                 // Combine vector and text search using RRF (Reciprocal Rank Fusion)
-                response = await _searchClient.SearchAsync<SearchableDocument>(searchText, searchOptions, cancellationToken);
+                response = await _searchClient.SearchAsync<AzureSearchDocumentDto>(searchText, searchOptions, cancellationToken);
             }
 
             stopwatch.Stop();
@@ -417,12 +430,13 @@ public class AzureSearchService : IAzureSearchService
             {
                 new SimpleField("document_id", SearchFieldDataType.String) { IsKey = true, IsFilterable = true },
                 new SimpleField("repository_id", SearchFieldDataType.String) { IsFilterable = true, IsFacetable = true },
+                new SimpleField("document_type", SearchFieldDataType.String) { IsFilterable = true, IsFacetable = true },
                 new SearchableField("file_path") { IsFilterable = true, IsSortable = true },
                 new SearchableField("file_name") { IsFilterable = true, IsSortable = true },
                 new SimpleField("file_extension", SearchFieldDataType.String) { IsFilterable = true, IsFacetable = true },
                 new SimpleField("language", SearchFieldDataType.String) { IsFilterable = true, IsFacetable = true },
                 new SearchableField("content"),
-                new VectorSearchField("content_vector", 1536, "vector-profile"),
+                new VectorSearchField("content_vector", 3072, "vector-profile"),
                 new SimpleField("line_count", SearchFieldDataType.Int32) { IsFilterable = true, IsSortable = true, IsFacetable = true },
                 new SimpleField("size_bytes", SearchFieldDataType.Int64) { IsFilterable = true, IsSortable = true },
                 new SimpleField("last_modified", SearchFieldDataType.DateTimeOffset) { IsFilterable = true, IsSortable = true },
@@ -518,30 +532,16 @@ public class AzureSearchService : IAzureSearchService
         };
     }
 
-    private Dictionary<string, object> ConvertToSearchDocument(SearchableDocument document)
+    /// <summary>
+    /// Converts a domain SearchableDocument to an Azure Search DTO using Clean Architecture principles.
+    /// This maintains separation between domain models and infrastructure serialization requirements.
+    /// </summary>
+    private AzureSearchDocumentDto ConvertToSearchDocument(SearchableDocument document)
     {
-        return new Dictionary<string, object>
-        {
-            ["document_id"] = document.Id,
-            ["repository_id"] = document.RepositoryId.ToString(),
-            ["file_path"] = document.FilePath,
-            ["file_name"] = document.FileName,
-            ["file_extension"] = document.FileExtension,
-            ["language"] = document.Language,
-            ["content"] = document.Content,
-            ["content_vector"] = document.ContentVector,
-            ["line_count"] = document.LineCount,
-            ["size_bytes"] = document.SizeInBytes,
-            ["last_modified"] = document.LastModified,
-            ["branch_name"] = document.BranchName,
-            ["repository_name"] = document.Metadata.RepositoryName,
-            ["repository_owner"] = document.Metadata.RepositoryOwner,
-            ["repository_url"] = document.Metadata.RepositoryUrl,
-            ["code_symbols"] = document.Metadata.CodeSymbols.ToArray()
-        };
+        return SearchDocumentMapper.ToAzureSearchDto(document);
     }
 
-    private SearchResult MapToSearchResult(Azure.Search.Documents.Models.SearchResult<SearchableDocument> result)
+    private SearchResult MapToSearchResult(Azure.Search.Documents.Models.SearchResult<AzureSearchDocumentDto> result)
     {
         var highlights = new List<string>();
         if (result.Highlights?.Any() == true)
@@ -549,11 +549,14 @@ public class AzureSearchService : IAzureSearchService
             highlights = result.Highlights.SelectMany(h => h.Value).ToList();
         }
 
+        // Convert DTO back to domain model using proper mapping
+        var searchableDocument = SearchDocumentMapper.FromAzureSearchDto(result.Document);
+
         return new SearchResult
         {
-            DocumentId = result.Document.Id,
+            DocumentId = result.Document.DocumentId ?? string.Empty,
             Score = result.Score ?? 0.0,
-            Document = result.Document,
+            Document = searchableDocument,
             Highlights = highlights
         };
     }

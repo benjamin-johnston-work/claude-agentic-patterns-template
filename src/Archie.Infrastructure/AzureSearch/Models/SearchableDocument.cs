@@ -14,6 +14,7 @@ public class SearchableDocument
     public long SizeInBytes { get; private set; }
     public DateTime LastModified { get; private set; }
     public string BranchName { get; private set; } = string.Empty;
+    public string DocumentType { get; private set; } = "File";
     public DocumentMetadata Metadata { get; private set; } = new();
 
     public static SearchableDocument Create(
@@ -22,6 +23,18 @@ public class SearchableDocument
         string content,
         float[] contentVector,
         string branchName,
+        DocumentMetadata metadata)
+    {
+        return Create(repositoryId, filePath, content, contentVector, branchName, "File", metadata);
+    }
+    
+    public static SearchableDocument Create(
+        Guid repositoryId,
+        string filePath,
+        string content,
+        float[] contentVector,
+        string branchName,
+        string documentType,
         DocumentMetadata metadata)
     {
         var fileName = Path.GetFileName(filePath);
@@ -42,6 +55,7 @@ public class SearchableDocument
             SizeInBytes = System.Text.Encoding.UTF8.GetByteCount(content),
             LastModified = DateTime.UtcNow,
             BranchName = branchName,
+            DocumentType = documentType,
             Metadata = metadata
         };
     }

@@ -209,7 +209,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="flex items-center space-x-4">
@@ -248,21 +248,19 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
           
           <div className="flex items-center space-x-2">
             {/* Documentation metadata */}
-            {documentation.metadata && (
-              <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-500">
-                {documentation.metadata.totalSections && (
-                  <Badge variant="outline">
-                    {documentation.metadata.totalSections} sections
-                  </Badge>
-                )}
-                {documentation.metadata.estimatedReadingTime && (
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{documentation.metadata.estimatedReadingTime} min read</span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-500">
+              {documentation.totalSections && (
+                <Badge variant="outline">
+                  {documentation.totalSections} sections
+                </Badge>
+              )}
+              {documentation.estimatedReadingTime && (
+                <div className="flex items-center space-x-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{Math.round(documentation.estimatedReadingTime)} min read</span>
+                </div>
+              )}
+            </div>
             
             {/* Export buttons */}
             <Button
@@ -286,7 +284,7 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
         </div>
         
         {/* Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
           <DocumentationContent
             documentation={{
               ...documentation,
@@ -305,16 +303,14 @@ export const DocumentationViewer: React.FC<DocumentationViewerProps> = ({
 function generateMarkdownExport(documentation: any): string {
   let markdown = `# ${documentation.title}\n\n`;
   
-  if (documentation.metadata) {
-    markdown += `> Generated: ${new Date(documentation.generatedAt).toLocaleDateString()}\n`;
-    if (documentation.metadata.totalSections) {
-      markdown += `> Sections: ${documentation.metadata.totalSections}\n`;
-    }
-    if (documentation.metadata.estimatedReadingTime) {
-      markdown += `> Reading Time: ${documentation.metadata.estimatedReadingTime} minutes\n`;
-    }
-    markdown += `\n`;
+  markdown += `> Generated: ${new Date(documentation.generatedAt).toLocaleDateString()}\n`;
+  if (documentation.totalSections) {
+    markdown += `> Sections: ${documentation.totalSections}\n`;
   }
+  if (documentation.estimatedReadingTime) {
+    markdown += `> Reading Time: ${Math.round(documentation.estimatedReadingTime)} minutes\n`;
+  }
+  markdown += `\n`;
   
   // Table of contents
   if (documentation.sections && documentation.sections.length > 0) {

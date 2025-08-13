@@ -38,12 +38,15 @@ interface Documentation {
   id: string;
   title: string;
   sections: DocumentationSection[];
+  // Direct fields for frontend UX
+  totalSections?: number;
+  estimatedReadingTime?: number;
+  lastGenerated?: string;
+  generationDuration?: number;
+  sectionsGenerated?: number;
+  // Legacy nested structure for backward compatibility
   metadata?: {
-    totalSections?: number;
     totalWords?: number;
-    estimatedReadingTime?: number;
-    lastGenerated?: string;
-    generationDuration?: number;
   };
   generatedAt: string;
 }
@@ -91,7 +94,7 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
     if (selectedSection) {
       return documentation.sections.filter(section => section.id === selectedSection);
     }
-    return documentation.sections.sort((a, b) => a.order - b.order);
+    return [...documentation.sections].sort((a, b) => a.order - b.order);
   }, [documentation.sections, selectedSection]);
 
   // Custom markdown components
@@ -192,17 +195,17 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
       </td>
     ),
     ul: ({ children, ...props }: any) => (
-      <ul className="list-disc list-inside mb-4 space-y-1" {...props}>
+      <ul className="list-disc pl-6 mb-4 space-y-2" {...props}>
         {children}
       </ul>
     ),
     ol: ({ children, ...props }: any) => (
-      <ol className="list-decimal list-inside mb-4 space-y-1" {...props}>
+      <ol className="list-decimal pl-6 mb-4 space-y-2" {...props}>
         {children}
       </ol>
     ),
     li: ({ children, ...props }: any) => (
-      <li className="text-gray-700 dark:text-gray-300" {...props}>
+      <li className="text-gray-700 dark:text-gray-300 leading-relaxed" {...props}>
         {children}
       </li>
     ),
@@ -251,12 +254,12 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
   }
 
   return (
-    <div className={cn('relative h-full', className)}>
+    <div className={cn('relative h-full bg-white dark:bg-gray-900', className)}>
       <div 
         ref={contentRef}
-        className="h-full overflow-auto"
+        className="h-full overflow-auto bg-white dark:bg-gray-900"
       >
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-900 relative z-10">
           {/* Documentation Header */}
           {!selectedSection && (
             <div className="mb-8">
@@ -265,30 +268,28 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
               </h1>
               
               {/* Metadata */}
-              {documentation.metadata && (
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  {documentation.metadata.totalSections && (
-                    <div className="flex items-center space-x-1">
-                      <FileText className="h-4 w-4" />
-                      <span>{documentation.metadata.totalSections} sections</span>
-                    </div>
-                  )}
-                  
-                  {documentation.metadata.estimatedReadingTime && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{documentation.metadata.estimatedReadingTime} min read</span>
-                    </div>
-                  )}
-                  
-                  {documentation.metadata.lastGenerated && (
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Updated {new Date(documentation.metadata.lastGenerated).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-6">
+                {documentation.totalSections && (
+                  <div className="flex items-center space-x-1">
+                    <FileText className="h-4 w-4" />
+                    <span>{documentation.totalSections} sections</span>
+                  </div>
+                )}
+                
+                {documentation.estimatedReadingTime && (
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{Math.round(documentation.estimatedReadingTime)} min read</span>
+                  </div>
+                )}
+                
+                {documentation.lastGenerated && (
+                  <div className="flex items-center space-x-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>Updated {new Date(documentation.lastGenerated).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
               
               <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-8" />
             </div>
@@ -326,7 +327,7 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
               )}
               
               {/* Section Content */}
-              <div className="prose prose-gray dark:prose-invert max-w-none">
+              <div className="markdown-content">
                 <ReactMarkdown
                   components={markdownComponents}
                   remarkPlugins={[remarkGfm, remarkToc]}
@@ -347,8 +348,8 @@ export const DocumentationContent: React.FC<DocumentationContentProps> = ({
           <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700 text-center text-sm text-gray-500">
             <p>
               Generated on {new Date(documentation.generatedAt).toLocaleDateString()}
-              {documentation.metadata?.generationDuration && (
-                <span> in {documentation.metadata.generationDuration}ms</span>
+              {documentation.generationDuration && (
+                <span> in {Math.round(documentation.generationDuration)}s</span>
               )}
             </p>
           </div>

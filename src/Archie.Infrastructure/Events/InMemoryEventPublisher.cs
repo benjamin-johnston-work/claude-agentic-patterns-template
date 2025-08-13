@@ -37,6 +37,12 @@ public class InMemoryEventPublisher : IEventPublisher
                 // For now, we just log the event
                 await Task.Delay(1, cancellationToken); // Simulate async operation
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Event publishing was cancelled for: {EventType}", domainEvent.GetType().Name);
+                // Don't throw on cancellation - this is expected behavior
+                return;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to publish domain event: {EventType}", domainEvent.GetType().Name);

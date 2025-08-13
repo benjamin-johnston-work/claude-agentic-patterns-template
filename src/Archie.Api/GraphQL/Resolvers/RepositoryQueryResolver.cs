@@ -5,7 +5,7 @@ using HotChocolate.Types;
 
 namespace Archie.Api.GraphQL.Resolvers;
 
-[ExtendObjectType<Query>]
+[ExtendObjectType(typeof(Query))]
 public class RepositoryQueryResolver
 {
     public async Task<RepositoryDto?> GetRepositoryAsync(

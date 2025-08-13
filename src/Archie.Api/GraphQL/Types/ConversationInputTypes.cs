@@ -26,6 +26,16 @@ public class StartConversationInputType : InputObjectType<StartConversationInput
         descriptor.Field(x => x.Preferences)
             .Type<ConversationPreferencesInputType>()
             .Description("Conversation preferences");
+
+        descriptor.Field(x => x.TechnicalTags)
+            .Type<ListType<NonNullType<StringType>>>()
+            .DefaultValue(new List<string>())
+            .Description("Technical tags for categorizing the conversation");
+
+        descriptor.Field(x => x.SessionData)
+            .Type<AnyType>()
+            .DefaultValue(new Dictionary<string, object>())
+            .Description("Session data as a JSON object");
     }
 }
 
@@ -92,3 +102,4 @@ public class ConversationPreferencesInputType : InputObjectType<ConversationPref
             .Description("Preferred programming languages for responses");
     }
 }
+
