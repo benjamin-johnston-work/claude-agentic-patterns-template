@@ -13,7 +13,7 @@ public class AzureOpenAIOptions
     public string ApiKey { get; set; } = string.Empty;
     
     [Required]
-    public string EmbeddingDeploymentName { get; set; } = "text-embedding-ada-002";
+    public string EmbeddingDeploymentName { get; set; } = "text-embedding-3-large";
     
     public string ApiVersion { get; set; } = "2024-02-01";
     

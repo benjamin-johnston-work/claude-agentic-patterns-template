@@ -157,8 +157,8 @@ function Start-ApiService {
         }
         Write-LoggedOutput "API project built successfully" -Type Success
         
-        # Start the API service
-        $apiProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--configuration", "Development" -PassThru -WindowStyle Hidden
+        # Start the API service with visible console output for development
+        $apiProcess = Start-Process -FilePath "dotnet" -ArgumentList "run", "--configuration", "Development" -PassThru
         
         if ($apiProcess) {
             Write-LoggedOutput "API service started (PID: $($apiProcess.Id))" -Type Success
@@ -255,8 +255,8 @@ function Start-FrontendService {
         }
         Write-LoggedOutput "npm dependencies installed successfully" -Type Success
         
-        # Start the frontend development server
-        $frontendProcess = Start-Process -FilePath "cmd" -ArgumentList "/c", "npm", "run", "dev" -PassThru -WindowStyle Hidden -WorkingDirectory $frontendPath
+        # Start the frontend development server with visible console output
+        $frontendProcess = Start-Process -FilePath "cmd" -ArgumentList "/c", "npm", "run", "dev" -PassThru -WorkingDirectory $frontendPath
         
         if ($frontendProcess) {
             Write-LoggedOutput "Frontend service started (PID: $($frontendProcess.Id))" -Type Success
@@ -331,26 +331,11 @@ function Start-LogStreaming {
         return
     }
     
-    Write-LoggedOutput "Starting log streaming..." -Type Info
+    Write-LoggedOutput "Development services are running in separate console windows:" -Type Info
+    Write-LoggedOutput "- API logs will appear in the dotnet console window" -Type Info
+    Write-LoggedOutput "- Frontend logs will appear in the npm console window" -Type Info
     Write-LoggedOutput "Press Ctrl+C to stop all services" -Type Warning
     Write-LoggedOutput "----------------------------------------" -Type Info
-    
-    # Stream API logs
-    if ($apiProcess) {
-        Start-Job -Name "ApiLogs" -ScriptBlock {
-            param($ProcessId, $ProjectPath)
-            
-            # Try to read from dotnet output
-            $logPath = "$ProjectPath\logs"
-            if (Test-Path $logPath) {
-                Get-ChildItem "$logPath\*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object {
-                    Get-Content $_.FullName -Wait | ForEach-Object {
-                        Write-Host "[API] $_" -ForegroundColor Green
-                    }
-                }
-            }
-        } -ArgumentList $apiProcess.Id, (Resolve-Path "$PSScriptRoot\..\src\Archie.Api").Path | Out-Null
-    }
     
     # Wait for user interruption
     try {
@@ -358,7 +343,11 @@ function Start-LogStreaming {
         while ($true) {
             Start-Sleep -Seconds 2
             
-            # Check if Frontend process is still running (only monitor frontend, API might exit normally)
+            # Check if processes are still running
+            if ($apiProcess -and $apiProcess.HasExited) {
+                Write-LoggedOutput "API process has exited unexpectedly" -Type Error
+                break
+            }
             if ($frontendProcess -and $frontendProcess.HasExited) {
                 Write-LoggedOutput "Frontend process has exited unexpectedly" -Type Error
                 break
@@ -366,9 +355,6 @@ function Start-LogStreaming {
         }
     } catch [System.Management.Automation.PipelineStoppedException] {
         Write-LoggedOutput "Received stop signal" -Type Warning
-    } finally {
-        # Clean up background jobs
-        Get-Job | Remove-Job -Force 2>$null
     }
 }
 

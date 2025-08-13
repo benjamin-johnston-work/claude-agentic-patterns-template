@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI.Embeddings;
 using System.Collections.Concurrent;
+using System.Net.Http;
+using System.Net.Sockets;
 using Archie.Infrastructure.AzureSearch.Interfaces;
 using Archie.Infrastructure.Configuration;
 
@@ -32,7 +34,10 @@ public class AzureOpenAIEmbeddingService : IAzureOpenAIEmbeddingService
         var endpoint = new Uri(_options.Endpoint);
         var credential = new AzureKeyCredential(_options.ApiKey);
         
-        _openAIClient = new AzureOpenAIClient(endpoint, credential);
+        // Use default client options - let SDK handle retries without NetworkTimeout override
+        var clientOptions = new AzureOpenAIClientOptions();
+        
+        _openAIClient = new AzureOpenAIClient(endpoint, credential, clientOptions);
         
         // Initialize rate limiting
         _rateLimitSemaphore = new SemaphoreSlim(_options.MaxBatchSize, _options.MaxBatchSize);
@@ -43,23 +48,30 @@ public class AzureOpenAIEmbeddingService : IAzureOpenAIEmbeddingService
     {
         if (string.IsNullOrWhiteSpace(text))
         {
-            _logger.LogWarning("Empty text provided for embedding generation");
+            _logger.LogWarning("AZURE OPENAI: Empty text provided for embedding generation");
             return Array.Empty<float>();
         }
 
         try
         {
+            _logger.LogDebug("AZURE OPENAI: Starting embedding generation for text of length {TextLength}", text.Length);
+
             // Apply rate limiting if enabled
             if (_options.EnableRateLimitProtection)
             {
+                _logger.LogDebug("AZURE OPENAI: Applying rate limiting protection");
                 await ApplyRateLimitingAsync(cancellationToken);
             }
 
             // Preprocess text to stay within token limits
             var processedText = PreprocessTextForEmbedding(text);
+            _logger.LogDebug("AZURE OPENAI: Text preprocessed from {OriginalLength} to {ProcessedLength} characters", 
+                text.Length, processedText.Length);
             
             var embeddingClient = _openAIClient.GetEmbeddingClient(_options.EmbeddingDeploymentName);
+            _logger.LogDebug("AZURE OPENAI: Created embedding client for deployment {DeploymentName}", _options.EmbeddingDeploymentName);
             
+            _logger.LogInformation("AZURE OPENAI: Calling Azure OpenAI API for embedding generation");
             var response = await ExecuteWithRetryAsync(
                 async () => await embeddingClient.GenerateEmbeddingAsync(processedText),
                 cancellationToken);
@@ -68,24 +80,35 @@ public class AzureOpenAIEmbeddingService : IAzureOpenAIEmbeddingService
             {
                 var embedding = response.Value.ToFloats().ToArray();
                 
-                _logger.LogDebug("Successfully generated embedding for text of length {TextLength}, embedding dimensions: {Dimensions}",
-                    processedText.Length, embedding.Length);
+                _logger.LogInformation("AZURE OPENAI: Successfully generated embedding with {Dimensions} dimensions for text of length {TextLength}",
+                    embedding.Length, processedText.Length);
                     
                 return embedding;
             }
 
-            _logger.LogError("No embedding data returned from Azure OpenAI service");
+            _logger.LogError("AZURE OPENAI: No embedding data returned from Azure OpenAI service");
             return Array.Empty<float>();
         }
         catch (RequestFailedException ex)
         {
-            _logger.LogError(ex, "Azure OpenAI API error generating embedding: {ErrorCode} - {Message}", 
-                ex.ErrorCode, ex.Message);
+            _logger.LogError(ex, "AZURE OPENAI: API error generating embedding - {ErrorCode}: {Message} | Status: {Status} | Details: {Details}", 
+                ex.ErrorCode, ex.Message, ex.Status, ex.GetRawResponse()?.Content?.ToString() ?? "No details");
+            throw;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "AZURE OPENAI: Request timed out generating embedding for text of length {TextLength}", text.Length);
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "AZURE OPENAI: HTTP error generating embedding - {Message}", ex.Message);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error generating embedding for text of length {TextLength}", text.Length);
+            _logger.LogError(ex, "AZURE OPENAI: Unexpected error generating embedding for text of length {TextLength} - {ExceptionType}: {Message}", 
+                text.Length, ex.GetType().Name, ex.Message);
             throw;
         }
     }
@@ -245,12 +268,13 @@ public class AzureOpenAIEmbeddingService : IAzureOpenAIEmbeddingService
             {
                 return await operation();
             }
-            catch (RequestFailedException ex) when (IsRetryableError(ex) && attempt < _options.RetryAttempts)
+            catch (Exception ex) when (IsRetryableException(ex) && attempt < _options.RetryAttempts)
             {
                 var delayMs = CalculateExponentialBackoffDelay(attempt);
                 
-                _logger.LogWarning("Azure OpenAI request failed (attempt {Attempt}/{MaxAttempts}), retrying in {DelayMs}ms: {ErrorCode} - {Message}",
-                    attempt, _options.RetryAttempts, delayMs, ex.ErrorCode, ex.Message);
+                var errorDetails = ex is RequestFailedException reqEx ? $"{reqEx.ErrorCode} - " : "";
+                _logger.LogWarning("Azure OpenAI request failed (attempt {Attempt}/{MaxAttempts}), retrying in {DelayMs}ms: {ErrorDetails}{Message}",
+                    attempt, _options.RetryAttempts, delayMs, errorDetails, ex.Message);
                 
                 await Task.Delay(delayMs, cancellationToken);
             }
@@ -259,10 +283,19 @@ public class AzureOpenAIEmbeddingService : IAzureOpenAIEmbeddingService
         return null;
     }
 
-    private static bool IsRetryableError(RequestFailedException ex)
+    private static bool IsRetryableException(Exception ex)
     {
-        // Retry on rate limits, timeouts, and temporary server errors
-        return ex.Status is 429 or 408 or >= 500;
+        return ex switch
+        {
+            RequestFailedException reqEx => reqEx.Status is 429 or 408 or >= 500,
+            TaskCanceledException => false, // Don't retry cancellations
+            OperationCanceledException => false, // Don't retry cancellations
+            HttpRequestException => true, // Retry HTTP issues
+            SocketException => true, // Retry network issues
+            IOException => true, // Retry I/O issues
+            TimeoutException => true, // Retry timeouts
+            _ => false
+        };
     }
 
     private static int CalculateExponentialBackoffDelay(int attempt)

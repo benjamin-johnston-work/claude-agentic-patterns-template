@@ -9,6 +9,12 @@ using Archie.Infrastructure.Events;
 using Archie.Infrastructure.GitHub;
 using Archie.Infrastructure.Repositories;
 using Archie.Infrastructure.Services;
+using Archie.Infrastructure.SemanticKernel;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+using Microsoft.Extensions.Options;
+using HotChocolate.Types;
+using HotChocolate.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +28,7 @@ builder.Services.Configure<AzureSearchOptions>(builder.Configuration.GetSection(
 builder.Services.Configure<AzureOpenAIOptions>(builder.Configuration.GetSection(AzureOpenAIOptions.SectionName));
 builder.Services.Configure<IndexingOptions>(builder.Configuration.GetSection(IndexingOptions.SectionName));
 builder.Services.Configure<DocumentationGenerationSettings>(builder.Configuration.GetSection(DocumentationGenerationSettings.SectionName));
+builder.Services.Configure<SemanticKernelOptions>(builder.Configuration.GetSection(SemanticKernelOptions.SectionName));
 
 // Add logging
 builder.Services.AddLogging();
@@ -45,6 +52,33 @@ builder.Services.AddScoped<ICodeSymbolExtractor, CodeSymbolExtractor>();
 builder.Services.AddScoped<FileContentProcessor>();
 builder.Services.AddScoped<IRepositoryIndexingService, RepositoryIndexingService>();
 
+// Add Semantic Kernel services
+builder.Services.AddSingleton<Kernel>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<SemanticKernelOptions>>().Value;
+    var kernelBuilder = Kernel.CreateBuilder();
+    
+    // Add Azure OpenAI chat completion service
+    kernelBuilder.AddAzureOpenAIChatCompletion(
+        deploymentName: options.AzureOpenAI.ChatDeployment,
+        endpoint: options.AzureOpenAI.Endpoint,
+        apiKey: options.AzureOpenAI.ApiKey);
+    
+    // Add Azure OpenAI embedding service
+#pragma warning disable SKEXP0010 // Experimental API for embedding generation
+    kernelBuilder.AddAzureOpenAITextEmbeddingGeneration(
+        deploymentName: options.AzureOpenAI.EmbeddingDeployment,
+        endpoint: options.AzureOpenAI.Endpoint,
+        apiKey: options.AzureOpenAI.ApiKey);
+#pragma warning restore SKEXP0010
+    
+    return kernelBuilder.Build();
+});
+
+builder.Services.AddScoped<ICodeAnalysisSkills, CodeAnalysisSkills>();
+builder.Services.AddScoped<ISemanticKernelCodeAnalysisService, SemanticKernelCodeAnalysisService>();
+builder.Services.AddScoped<ICodeAnalysisSessionRepository, AzureSearchCodeAnalysisSessionRepository>();
+
 // Add use cases
 builder.Services.AddScoped<AddRepositoryUseCase>();
 builder.Services.AddScoped<GetRepositoryUseCase>();
@@ -52,6 +86,9 @@ builder.Services.AddScoped<GetRepositoriesUseCase>();
 builder.Services.AddScoped<RefreshRepositoryUseCase>();
 builder.Services.AddScoped<RemoveRepositoryUseCase>();
 builder.Services.AddScoped<ValidateRepositoryUseCase>();
+
+// Add code analysis use cases
+builder.Services.AddScoped<StartCodeAnalysisUseCase>();
 
 // Add documentation use cases
 builder.Services.AddScoped<GenerateDocumentationUseCase>();
@@ -70,6 +107,7 @@ builder.Services.AddScoped<GetConversationUseCase>();
 
 // Add knowledge graph services
 builder.Services.AddScoped<IGraphStorageService, StubGraphStorageService>();
+builder.Services.AddScoped<IKnowledgeGraphConstructionService, StubKnowledgeGraphConstructionService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -91,6 +129,8 @@ builder.Services
     // Configure Dictionary serialization for GraphQL
     .BindRuntimeType<Dictionary<string, object>, AnyType>()
     .BindRuntimeType<IDictionary<string, object>, AnyType>()
+    // Configure GUID formatting to use RFC 4122 standard with hyphens
+    .BindRuntimeType<Guid, IdType>()
     .AddType<RepositoryType>()
     .AddType<RepositoryStatusType>()
     .AddType<BranchType>()
@@ -166,6 +206,11 @@ builder.Services
     .AddType<PatternTypeEnumType>()
     .AddType<ViolationSeverityType>()
     
+    // Add code analysis GraphQL types
+    .AddType<CodeAnalysisSessionType>()
+    .AddType<CodeAnalysisMetricsType>()
+    .AddType<AnalysisErrorType>()
+    
     .AddTypeExtension<RepositoryQueryResolver>()
     .AddTypeExtension<RepositoryMutationResolver>()
     .AddTypeExtension<SearchQueryResolver>()
@@ -183,6 +228,10 @@ builder.Services
     // Add conversation GraphQL resolvers
     .AddTypeExtension<ConversationQueryResolver>()
     .AddTypeExtension<ConversationMutationResolver>()
+    
+    // Add code analysis GraphQL resolvers
+    .AddTypeExtension<CodeAnalysisQueryResolver>()
+    .AddTypeExtension<CodeAnalysisMutationResolver>()
     
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true);
 

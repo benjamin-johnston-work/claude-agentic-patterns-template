@@ -29,7 +29,7 @@ namespace Archie.Infrastructure.Tests.Services
             _gitHubOptions = new GitHubOptions
             {
                 DefaultAccessToken = "test-token",
-                UserAgent = "ArchieTest/1.0",
+                UserAgent = "ArchieTest",
                 ApiTimeoutSeconds = 30,
                 RateLimitBuffer = 100,
                 EnableRateLimitProtection = false // Disable for tests
@@ -180,7 +180,7 @@ namespace Archie.Infrastructure.Tests.Services
             var options = new GitHubOptions
             {
                 DefaultAccessToken = "test-token",
-                UserAgent = "ArchieTest/1.0",
+                UserAgent = "ArchieTest",
                 EnableRateLimitProtection = false
             };
             

@@ -14,13 +14,16 @@ namespace Archie.Api.GraphQL.Resolvers;
 public class SearchMutationResolver
 {
     private readonly IRepositoryIndexingService _indexingService;
+    private readonly IAzureSearchService _azureSearchService;
     private readonly ILogger<SearchMutationResolver> _logger;
 
     public SearchMutationResolver(
         IRepositoryIndexingService indexingService,
+        IAzureSearchService azureSearchService,
         ILogger<SearchMutationResolver> logger)
     {
         _indexingService = indexingService;
+        _azureSearchService = azureSearchService;
         _logger = logger;
     }
 
@@ -39,15 +42,102 @@ public class SearchMutationResolver
     {
         try
         {
+            _logger.LogError("DEBUG: IndexRepository called with repositoryId: {RepositoryId} (Type: {Type}, IsEmpty: {IsEmpty})", 
+                repositoryId, repositoryId.GetType().Name, repositoryId == Guid.Empty);
             _logger.LogInformation("Starting repository indexing for {RepositoryId} (force: {Force})", 
                 repositoryId, force);
 
-            var status = await _indexingService.IndexRepositoryAsync(repositoryId, force, cancellationToken);
+            // Create a separate cancellation token for the background operation
+            // This prevents GraphQL timeout from cancelling the indexing operation
+            using var backgroundCts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+            var backgroundToken = backgroundCts.Token;
 
-            _logger.LogInformation("Repository indexing initiated for {RepositoryId}. Status: {Status}", 
-                repositoryId, status.Status);
+            // Start indexing in the background - don't await here
+            var indexingTask = _indexingService.IndexRepositoryAsync(repositoryId, force, backgroundToken);
 
-            return status;
+            // Return initial status immediately - don't wait for completion
+            var initialStatus = new IndexStatus
+            {
+                Status = IndexingStatus.IN_PROGRESS,
+                DocumentsIndexed = 0,
+                TotalDocuments = 0,
+                EstimatedCompletion = DateTime.UtcNow.AddMinutes(5) // Initial estimate
+            };
+
+            _logger.LogInformation("Repository indexing initiated for {RepositoryId}. Initial status: {Status}", 
+                repositoryId, initialStatus.Status);
+
+            // Fire and forget - let indexing continue in background with comprehensive error logging
+            Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: About to start Task.Run for repository {repositoryId}");
+            _logger.LogInformation("BACKGROUND INDEXING: About to start Task.Run for repository {RepositoryId}", repositoryId);
+            
+            // Also write to a debug file to verify execution
+            try
+            {
+                var debugLogPath = @"C:\Dev\Archie\background-task-debug.log";
+                var debugMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] About to start Task.Run for repository {repositoryId}\n";
+                File.AppendAllText(debugLogPath, debugMessage);
+            }
+            catch { /* Ignore file write errors */ }
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: Inside Task.Run for repository {repositoryId}");
+                    _logger.LogInformation("BACKGROUND INDEXING: Inside Task.Run for repository {RepositoryId}", repositoryId);
+                    
+                    // Debug file write inside Task.Run
+                    try
+                    {
+                        var debugLogPath = @"C:\Dev\Archie\background-task-debug.log";
+                        var debugMessage = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Inside Task.Run for repository {repositoryId}\n";
+                        File.AppendAllText(debugLogPath, debugMessage);
+                    }
+                    catch { /* Ignore file write errors */ }
+                    
+                    // Await the indexing task
+                    var finalStatus = await indexingTask;
+                    
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: Completed for {repositoryId}. Status: {finalStatus.Status}");
+                    _logger.LogInformation("BACKGROUND INDEXING: Completed for {RepositoryId}. Final status: {Status}, Documents: {DocumentsIndexed}/{TotalDocuments}", 
+                        repositoryId, finalStatus.Status, finalStatus.DocumentsIndexed, finalStatus.TotalDocuments);
+                        
+                    if (finalStatus.Status == IndexingStatus.ERROR)
+                    {
+                        _logger.LogError("BACKGROUND INDEXING: Error occurred - {ErrorMessage}", finalStatus.ErrorMessage);
+                    }
+                }
+                catch (OperationCanceledException cancelEx)
+                {
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: Cancelled for {repositoryId} - {cancelEx.Message}");
+                    _logger.LogWarning("BACKGROUND INDEXING: Cancelled/Timeout for {RepositoryId} - {Message}", repositoryId, cancelEx.Message);
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: HTTP error for {repositoryId}");
+                    _logger.LogError(httpEx, "BACKGROUND INDEXING: HTTP error for {RepositoryId} - likely GitHub API or Azure OpenAI issue", repositoryId);
+                }
+                catch (UnauthorizedAccessException authEx)
+                {
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: Auth error for {repositoryId}");
+                    _logger.LogError(authEx, "BACKGROUND INDEXING: Authentication error for {RepositoryId} - check API keys", repositoryId);
+                }
+                catch (Exception backgroundEx)
+                {
+                    Console.WriteLine($"[CONSOLE TEST] BACKGROUND INDEXING: Exception for {repositoryId} - {backgroundEx.GetType().Name}: {backgroundEx.Message}");
+                    _logger.LogError(backgroundEx, "BACKGROUND INDEXING: Unexpected failure for {RepositoryId} - {ExceptionType}: {Message}", 
+                        repositoryId, backgroundEx.GetType().Name, backgroundEx.Message);
+                    
+                    if (backgroundEx.InnerException != null)
+                    {
+                        _logger.LogError("BACKGROUND INDEXING: Inner exception - {InnerType}: {InnerMessage}", 
+                            backgroundEx.InnerException.GetType().Name, backgroundEx.InnerException.Message);
+                    }
+                }
+            }, CancellationToken.None);
+
+            return initialStatus;
         }
         catch (Exception ex)
         {
@@ -125,6 +215,36 @@ public class SearchMutationResolver
                 DocumentsIndexed = 0,
                 TotalDocuments = 0
             };
+        }
+    }
+
+    /// <summary>
+    /// Recreate the Azure Search index with updated schema
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful</returns>
+    [GraphQLDescription("Recreate Azure Search index with updated schema")]
+    public async Task<bool> RecreateSearchIndex(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Starting Azure Search index recreation");
+
+            // Delete existing index
+            await _azureSearchService.DeleteIndexAsync(cancellationToken);
+            
+            // Create new index with updated schema
+            var success = await _azureSearchService.CreateIndexAsync(cancellationToken);
+
+            _logger.LogInformation("Azure Search index recreation {Result}", 
+                success ? "succeeded" : "failed");
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recreating Azure Search index");
+            return false;
         }
     }
 }

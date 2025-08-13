@@ -121,11 +121,11 @@ export const GET_FILE_CONTENT = gql`
 
 // Documentation Queries
 export const GET_REPOSITORY_DOCUMENTATION = gql`
-  query GetRepositoryDocumentation($repositoryId: ID!, $documentationId: ID) {
+  query GetRepositoryDocumentation($repositoryId: ID!) {
     repository(id: $repositoryId) {
       id
       name
-      documentation(id: $documentationId) {
+      documentation {
         id
         title
         status
@@ -135,27 +135,18 @@ export const GET_REPOSITORY_DOCUMENTATION = gql`
           content
           type
           order
-          metadata {
-            wordCount
-            readingTime
-            lastModified
-          }
         }
+        # Direct fields for frontend UX
+        totalSections
+        estimatedReadingTime
+        lastGenerated
+        generationDuration
+        sectionsGenerated
+        # Legacy nested structure for backward compatibility
         metadata {
-          totalSections
           totalWords
-          estimatedReadingTime
-          lastGenerated
-          generationDuration
-        }
-        statistics {
-          sectionsGenerated
-          wordsGenerated
-          averageSectionLength
         }
         generatedAt
-        createdAt
-        updatedAt
       }
     }
   }

@@ -153,9 +153,9 @@ public class GenerateDocumentationUseCase
         {
             _logger.LogError(ex, "Error generating documentation for repository: {RepositoryId}", input.RepositoryId);
 
-            // If we have a documentation entity, mark it as failed
+            // If we have a documentation entity, mark it as failed only if not already completed
             var existingDoc = await _documentationRepository.GetByRepositoryIdAsync(input.RepositoryId, cancellationToken);
-            if (existingDoc != null)
+            if (existingDoc != null && existingDoc.Status != DocumentationStatus.Completed)
             {
                 existingDoc.MarkAsFailed(ex.Message);
                 await _documentationRepository.UpdateAsync(existingDoc, cancellationToken);
@@ -201,13 +201,17 @@ public class GenerateDocumentationUseCase
 
     private static DocumentationDto MapToDto(Documentation documentation)
     {
+        var sectionsList = documentation.Sections.ToList();
+        var totalWords = sectionsList.Sum(s => s.Content?.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length ?? 0);
+        var estimatedReadingTime = totalWords / 200.0; // Average reading speed: 200 words per minute
+
         return new DocumentationDto
         {
             Id = documentation.Id,
             RepositoryId = documentation.RepositoryId,
             Title = documentation.Title,
             Status = documentation.Status,
-            Sections = documentation.Sections.Select(s => new DocumentationSectionDto
+            Sections = sectionsList.Select(s => new DocumentationSectionDto
             {
                 Id = s.Id,
                 Title = s.Title,
@@ -258,7 +262,14 @@ public class GenerateDocumentationUseCase
                 AccuracyScore = documentation.Statistics.AccuracyScore,
                 CoveredTopics = documentation.Statistics.CoveredTopics
             },
-            ErrorMessage = documentation.ErrorMessage
+            ErrorMessage = documentation.ErrorMessage,
+            
+            // Populate the missing frontend fields with calculated values
+            TotalSections = sectionsList.Count,
+            EstimatedReadingTime = estimatedReadingTime,
+            LastGenerated = documentation.GeneratedAt,
+            GenerationDuration = documentation.Statistics.GenerationTime.TotalSeconds,
+            SectionsGenerated = sectionsList.Count(s => !string.IsNullOrWhiteSpace(s.Content))
         };
     }
 }
